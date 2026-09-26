@@ -112,11 +112,18 @@
 ### 桌面端（已产出可分发 zip）
 
 Electron 31.7.7 + electron-builder 24.13.3（`asar: false`，`win.target: ["zip"]`）；后端用
-PyInstaller **onefile** 打包（`backend/run_desktop.spec`，`console=False`）→ 约 18.5 MB 的
-`academic_backend.exe`，作为 `extraResources` 落到 `resources/backend/`。当前交付物
-`frontend/release7/AI学术写作辅助系统-1.0.0-win.zip`（127,391,559 字节，2026-09-24 烘，
-sha256 `89e74fcf461587077e1bc1594ba3e98f50c854b1665b5a3f1af4e39319599701`），
+PyInstaller **onefile** 打包（`backend/run_desktop.spec`，`console=False`）→ 约 19 MB 的
+`academic_backend.exe`（v1.31 重打后 19,882,302 字节；此前是约 18.5 MB），作为 `extraResources`
+落到 `resources/backend/`。当前交付物
+`frontend/release8/AI学术写作辅助系统-1.0.0-win.zip`（127,885,710 字节，2026-09-27 烘，
+sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`），
 解压即用（免装 Python / Node）。
+
+> **为什么有 `release8`**：上一份 `release7`（127,391,559 字节，2026-09-24 04:04 烘）
+> **不含 D-30 的 WAL 修复** —— 它烘的时候 `backend/app/db.py` 与 `config.py` 还没改，
+> 而 `datas` 是整棵打包，于是桌面版上"生成的写挡住轮询的读"那个现场一直是坏的。
+> 本轮重打两个半边后已实测修正：起 `release8` 的 exe 后 `~/.academic_writer/app.db`
+> 的 `journal_mode` 由 `delete` 变为 `wal`（源码态的库路径与打包态不同，这条此前从未被覆盖）。
 
 **输出目录随版本递增，已交付的包一个字节都不要动**——同名重建会覆盖那份说了「不动了」的 zip
 （打包指南坑 3 就是这条）。哈希只说明"包里那份 == 我刚构建的那份"、**不说明"构建出来的跑的是
