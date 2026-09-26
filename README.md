@@ -127,7 +127,9 @@ node --test tests/exporters.test.mjs tests/api.test.mjs \
 
 ## 快速开始
 
-三步跑起来（Windows；macOS / Linux 把 `venv/Scripts/` 换成 `venv/bin/`）：
+**不想装环境？** 直接下载桌面版：从 [Releases](../../releases) 页面下载 zip，解压双击 `AI学术写作辅助系统.exe` 即可——无需安装 Python / Node / 任何依赖（122 MB，含完整运行时）。
+
+**想跑源码？** 三步跑起来（Windows；macOS / Linux 把 `venv/Scripts/` 换成 `venv/bin/`）：
 
 ```bash
 # 1) 后端：建虚拟环境、装依赖、（可选）配置 LLM
