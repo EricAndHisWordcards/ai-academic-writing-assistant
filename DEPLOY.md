@@ -11,7 +11,7 @@
 Nginx（前端静态文件 + 反向代理 /api）
     │
     ▼ /api/*
-FastAPI 后端（uvicorn 多 worker）
+FastAPI 后端（uvicorn 单进程，原因见 4.3）
     │
     ├── SQLite 数据库（持久化卷）
     └── LLM（DeepSeek / 通义 / Moonshot 等 OpenAI 兼容接口）
@@ -84,6 +84,7 @@ docker compose down
 
 - 后端不对外暴露端口，仅通过前端 Nginx 反向代理访问（更安全）。
 - 数据库持久化在 `academic_data` volume，重启不丢失。
+- 批量 PDF 上传按"整批之和"计体积，Nginx 已设 `client_max_body_size 200m`（默认 1m 会导致上传 413）。
 - 若需单独调试后端，可在 `docker-compose.yml` 中取消 `backend.ports` 注释。
 
 ---
@@ -107,11 +108,18 @@ docker compose down
 3. **HTTPS**：生产环境需在 Nginx 前加 TLS（如 Let's Encrypt / 云负载均衡）。
 4. **限流与鉴权**：当前 MVP 无用户系统，公网部署需加认证层（后续迭代）。
 
-### 4.3 性能建议
+### 4.3 性能与约束
 
-- **多 worker**：生产环境建议 `uvicorn --workers 4` 或使用 gunicorn + uvicorn worker。
+- **必须单进程**：启动 uvicorn 时**不要**加 `--workers`。运行中的生成任务登记在进程内
+  字典里（`tasks._TASKS` / `projects._GEN_TASKS`），"同一项目同一时刻只有一个生成在跑"
+  的 409 互斥完全依赖它——多 worker 后每个 worker 各持一份登记表，互斥整体失效，
+  同一项目会被两个 worker 同时生成：双倍 token 消耗、状态互相覆盖。当前单机规模下
+  单进程 + 异步 IO 足够；真扛不住时的正确路径是把任务登记表外置（如 Redis），而不是加 worker。
+- **数据库 WAL**：`db.get_conn()` 已开启 WAL（读不阻塞写），前端进度轮询不会被生成写入挡住。
+- **上传体积**：批量 PDF 上传按"整批之和"计体积，`frontend/nginx.conf` 已设
+  `client_max_body_size 200m`（默认 1m 会导致上传 413）；单篇更大时相应调大。
 - **长文生成超时**：LLM 分段生成耗时较长，Nginx `proxy_read_timeout` 已设为 300s；若生成更长的论文需进一步调大。
-- **数据库**：SQLite 适合单机 MVP；多用户高并发时迁移到 PostgreSQL（后续迭代）。
+- **数据库**：SQLite 适合单机 MVP；多用户高并发时迁移到 PostgreSQL（届时同步外置任务登记表，后续迭代）。
 - **LLM 并发**：注意服务商 API 的 RPM/TPM 限流。
 
 ### 4.4 监控与日志

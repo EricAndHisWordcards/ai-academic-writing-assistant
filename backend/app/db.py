@@ -86,6 +86,11 @@ def get_conn() -> Iterator[sqlite3.Connection]:
     conn = sqlite3.connect(_db_path())
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # WAL：读不阻塞写。生成循环在持续写 generation_state_json / task_state_json，
+    # 前端同一时间还在轮询进度——默认 journal 模式下这两类操作互相抢写锁，WAL 让
+    # 轮询的读不再被生成的写挡住。journal_mode 持久化在库文件上，逐连接重复
+    # 执行只是幂等确认，无额外代价。
+    conn.execute("PRAGMA journal_mode = WAL")
     try:
         yield conn
         conn.commit()
