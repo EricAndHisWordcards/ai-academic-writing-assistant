@@ -23,6 +23,11 @@ class Settings(BaseSettings):
 
     # 数据库
     database_path: str = "./data/app.db"
+    # WAL：读不阻塞写（D-30）。默认开，生产不要动。
+    # 关掉它**只影响新建的库** —— 已经是 WAL 的库不会被降级，理由与"为什么刻意不
+    # 反向执行 journal_mode = DELETE"一起写在 app/db.py 那条 pragma 上方。测试用它
+    # 跳过每个临时库的 WAL 建立/拆除（否则全量 pytest 约 5 分钟 → 约 24 分钟）。
+    database_wal: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",

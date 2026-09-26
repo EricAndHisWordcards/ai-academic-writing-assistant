@@ -88,9 +88,24 @@ def get_conn() -> Iterator[sqlite3.Connection]:
     conn.execute("PRAGMA foreign_keys = ON")
     # WAL：读不阻塞写。生成循环在持续写 generation_state_json / task_state_json，
     # 前端同一时间还在轮询进度——默认 journal 模式下这两类操作互相抢写锁，WAL 让
-    # 轮询的读不再被生成的写挡住。journal_mode 持久化在库文件上，逐连接重复
-    # 执行只是幂等确认，无额外代价。
-    conn.execute("PRAGMA journal_mode = WAL")
+    # 轮询的读不再被生成的写挡住。
+    #
+    # 为什么这条要按开关执行，而不是无条件执行：
+    #   journal_mode 确实持久化在库文件上，所以对**已经是 WAL 的库**下面这句是无副作用
+    #   的幂等确认。但 WAL 的代价**不在这句 pragma**，而在于「最后一个连接干净关闭时
+    #   SQLite 必须 checkpoint 并删掉 -wal / -shm」——get_conn() 是一次操作一个连接的
+    #   形态，于是每个连接都完整付一遍「建 WAL + checkpoint + 删 WAL」。测试里 237 个
+    #   用例各新建一个临时库，init_db() 自身 + 5 个 migration = 6 次连接起步（1422 次），
+    #   Windows 上新文件还要过 Defender，全量 pytest 因此从约 5 分钟涨到约 24 分钟。
+    #   把这句挪进 init_db() 里**一分钱都省不了**：模式已经写进库文件，后续连接照样是 WAL。
+    #
+    # 关闭时的语义（必须知道）：这里**刻意不反向执行 journal_mode = DELETE** —— 那需要
+    #   独占访问（要 checkpoint 并删 -wal），而 get_conn() 完全会在别的连接还开着时被
+    #   调用，SQLite 会回 SQLITE_BUSY。于是 database_wal=False 的真实含义是「**新建**
+    #   的库不用 WAL；**已经是 WAL 的库保持 WAL**」。这个偏向是刻意的：就算有人在 .env
+    #   里误配了 DATABASE_WAL=false，生产也不会被静默降级回 D-30 修的那个现场。
+    if settings.database_wal:
+        conn.execute("PRAGMA journal_mode = WAL")
     try:
         yield conn
         conn.commit()

@@ -1,5 +1,6 @@
 """测试：项目状态机与数据库 CRUD（db）。"""
 import json
+import os
 
 import pytest
 
@@ -877,3 +878,59 @@ def test_migrate_reference_snapshots_never_leaves_an_empty_formatted(tmp_db):
     assert refs[0]["formatted"] == "[1] 题名[J]."
     # 连题名都没有（文献已删）时才是空壳分支 —— 至少还印得出一个编号
     assert refs[1]["formatted"] == "[2] （未命名文献）[J]."
+
+
+# ---------------------------------------------------------------
+# WAL 开关（D-30）
+# ---------------------------------------------------------------
+
+def test_database_wal_default_is_on():
+    """生产默认必须开 WAL —— D-30 修的就是「生成的写挡住轮询的读」那个现场。
+
+    这条钉的是 config.py 里 `database_wal: bool = True` 的默认值。改掉它不会让任何一条
+    **行为**用例变红（测试里这个值是夹具显式压下去的），只有这一条会；而那种改动一旦
+    混进别的提交，现场是"生成时前端进度偶尔卡住"，没人会想到是配置默认值。
+    """
+    from app.config import Settings
+
+    assert Settings().database_wal is True
+
+
+def test_get_conn_uses_wal_when_enabled(monkeypatch, tmp_path):
+    """开关为 True 时必须是真的 WAL —— 这条钉的是 db.get_conn() 里那个 if 分支。
+
+    刻意不复用 tmp_db 夹具：tmp_db 的 teardown 执行 `os.remove(主库)`，而 monkeypatch
+    的撤销发生在**夹具 teardown 之后**——那一刻 database_wal 还是 True、库还是 WAL，
+    os.remove 只删主库，把 -wal / -shm 两个孤儿永久留在 %TEMP% 里。用 pytest 自己的
+    tmp_path 没这个问题。
+    """
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "database_path", str(tmp_path / "probe.db"))
+    monkeypatch.setattr(settings, "database_wal", True)
+
+    from app import db
+
+    with db.get_conn() as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS probe (x INTEGER)")
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+
+
+def test_tmp_db_is_not_wal(tmp_db):
+    """测试用的临时库必须是 DELETE —— 这是「全量 pytest 约 5 分钟」这条预算的唯一护栏。
+
+    conftest 里要是漏了 `monkeypatch.setattr(settings, "database_wal", False)` 那一行，
+    这条立刻变红（journal_mode 报 'wal'）。没有它，唯一能发现回归的途径是有人盯着 CI
+    觉得"今天怎么慢了二十分钟"——那个信号来得太晚，而且大多数人会先怀疑机器，而不是
+    怀疑自己刚改的那一行。见 db.py 那条 pragma 上方的注释：237 个建库用例 × init_db 的
+    6 次连接 = 1422 次 WAL 建立/拆除起步。
+    """
+    from app.config import settings
+
+    with tmp_db.get_conn() as conn:
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+
+    # 「全程没进过 WAL」的硬证据：旁边连 -wal / -shm 都不该短暂存在过
+    db_path = settings.database_path
+    assert not os.path.exists(db_path + "-wal")
+    assert not os.path.exists(db_path + "-shm")

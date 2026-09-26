@@ -37,10 +37,14 @@ def tmp_db(monkeypatch):
     """使用临时数据库，测试结束后自动清理。"""
     fd, path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
-    monkeypatch.setenv("DATABASE_PATH", path)
-    # 重新加载 settings 以应用新的路径
+    # 真正生效的是下面这行 setattr，不是 setenv：settings 是 import 期就构造好的模块级
+    # 单例（config.py 末尾 `settings = Settings()`），此后没人再读环境变量。
     from app.config import settings
     monkeypatch.setattr(settings, "database_path", path)
+    # 临时库一律不用 WAL：WAL 下每个连接干净关闭都要建/拆一次 -wal / -shm，一个用例光
+    # init_db() 就是 6 次连接，237 个建库用例把全量 pytest 从约 5 分钟拖到约 24 分钟。
+    # **必须排在 init_db() 之前** —— 那 6 次连接里的第一次就把模式写进库文件了。
+    monkeypatch.setattr(settings, "database_wal", False)
 
     from app import db
     db.init_db()
