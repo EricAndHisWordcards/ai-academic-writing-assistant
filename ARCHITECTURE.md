@@ -1,8 +1,12 @@
 # 项目定位与技术架构
 
 > 本文回答三个问题：这个项目**是什么**、**不是什么**、**用什么技术实现**。
-> 面向需要在几分钟内判断其技术形态的读者（评审、面试官、协作者）。
-> 产品行为、边界与验收标准见 [`AI学术写作辅助系统_PRD.md`](./AI学术写作辅助系统_PRD.md)；上手运行见 [`README.md`](./README.md)。
+> 面向需要在几分钟内判断其技术形态的读者（访客、评审、协作者）。
+>
+> **文档导航**：[`README.md`](./README.md) 扉页（是什么 / 给谁用 / 怎么跑起来）· **本文**（怎么实现）·
+> [`DECISIONS.md`](./DECISIONS.md) 为什么变成这样（演化账本）· [`DEPLOY.md`](./DEPLOY.md) 怎么部署 ·
+> [`源码打包指南.md`](./源码打包指南.md) 怎么出包 ·
+> [`AI学术写作辅助系统_PRD.md`](./AI学术写作辅助系统_PRD.md) 产品定义与验收标准。
 
 ## 一句话定位
 
@@ -89,7 +93,7 @@
 | 校验 / 配置 | pydantic 2.10.4 + pydantic-settings 2.7.0 |
 | 模型调用 | `openai` 1.59.6（`AsyncOpenAI`）——**任意 OpenAI 兼容端点**（DeepSeek / 通义千问 / Moonshot / 智谱 等） |
 | 存储 | SQLite（**原生 `sqlite3`，无 ORM**），单文件 `backend/data/app.db`，3 张表：`projects` / `documents` / `materials` |
-| 并发 | 原生 `asyncio` 后台任务 + 进度落库（无 Celery / Redis） |
+| 并发 | 原生 `asyncio` 后台任务 + 进度落库（无 Celery / Redis）；**必须单进程运行**（任务登记表在进程内，理由见 [`DEPLOY.md`](./DEPLOY.md) §4.3） |
 | PDF 解析 | pypdf 5.1.0，带**逐页索引**以便引用定位 |
 | 材料解析 | `.docx` / `.xlsx` 用**标准库 `zipfile` + `ElementTree`** 直读 OOXML；`.txt/.md/.csv/.json/.log` 分级编码回退 |
 | 上传与配置 | python-multipart 0.0.20（文件上传）+ python-dotenv 1.0.1（`.env`） |
@@ -101,7 +105,7 @@
 |---|---|
 | 框架 | React 18.3.1（**无状态管理库**） |
 | 构建 | Vite 5.4.21 + @vitejs/plugin-react 4.7.0 |
-| 主组件 | `src/App.jsx`（约 3.7k 行），承载分步工作流 |
+| 主组件 | `src/App.jsx`（3,925 行），承载分步工作流 |
 | API 客户端 | `src/api.js`，手写。非 2xx 一律把后端的 `{detail: "中文原因"}` 原样抛出（`errorDetail` 一处实现，三个入口共用），取不到才退回通用文案 |
 | 导出 | `src/exporters.js`（纯 JS，不含 React）：Markdown / 纯文本 / **Word（.docx，手写 OOXML + 不压缩 zip）**。放在单独模块而不是塞进 `App.jsx`，一是三种格式共用同一份「导出文档」形状（标题、章节、参考文献只拼一次），二是它不含 React，可以直接用 Node 跑起来验证。**文件不经过后端**；后端只有一个回执路由（`POST /projects/{id}/export`），它只写状态 |
 
@@ -109,27 +113,19 @@
 
 Electron 31.7.7 + electron-builder 24.13.3（`asar: false`，`win.target: ["zip"]`）；后端用
 PyInstaller **onefile** 打包（`backend/run_desktop.spec`，`console=False`）→ 约 18.5 MB 的
-`academic_backend.exe`，作为 `extraResources` 落到 `resources/backend/`。产物
-`frontend/release4/AI学术写作辅助系统-1.0.0-win.zip` 约 121 MB，解压即用（免装 Python / Node）。
+`academic_backend.exe`，作为 `extraResources` 落到 `resources/backend/`。当前交付物
+`frontend/release7/AI学术写作辅助系统-1.0.0-win.zip`（127,391,559 字节，2026-09-24 烘，
+sha256 `89e74fcf461587077e1bc1594ba3e98f50c854b1665b5a3f1af4e39319599701`），
+解压即用（免装 Python / Node）。
 
-> **已交付的那份是 2026-09-21 烘的，内容停在 v1.25 期**（探针实测：包内不含「写作语言」，
-> 而 `写作思路` / `导出全文` / `gb7714` 三个正对照都在）。v1.26 / v1.27 / v1.28 三轮的修复
-> **没有一条进得去**，要用就得重新打一次包。**v1.28 起 `frontend/package.json` 的
-> `build.directories.output` 已从 `release4` 改成 `release5`** —— 同名重建会覆盖那份
-> 说了「不动了」的 zip（打包指南坑 3 就是这条）。
->
-> **v1.29 追加：现在有三份包，最新的那份是 `release6`。** `release4`（2026-09-21 烘，v1.25 期）
-> 与 `release5`（2026-09-23 17:50 烘，v1.28 期）都已交付出去，复核**一字未动**（各自的 sha256
-> 与交付记录逐字相符）；当前交付物是 `frontend/release6/AI学术写作辅助系统-1.0.0-win.zip`
-> （127,390,397 字节 / 174 项 / sha256 `44977DCC1108917A28177B5F9A4EFBE071D1BCAC67C4260B8B61B4952780D738`，
-> 内容是 v1.29 期），输出目录也已随之改成 `release6`。**冻结那一刻包内那份后端 exe 与前端 bundle
-> 都与源码树当前构建逐字节同哈希**，但哈希只说明"包里那份 == 我刚构建的那份"、**不说明"构建出来的
-> 跑的是新代码"**（漏跑一次 PyInstaller 打出的包恰好就是"能开、不报错、改动一行没进去"），
-> 所以还把那个 19 MB 的 exe **真跑起来**验过一次：一次性 `USERPROFILE` + 一个本地假模型端点
-> （不联网、不用真实密钥、不花钱），现场看到本轮新写的进度阶段与终态文案。**如实记一条边界**：
-> 我验的是**后端 exe**，**Electron 外壳我没有双击过**；隐私逐项扫描零命中（`.env` / `*.db` /
-> 配置文件 / 密钥值 / 用户名 / 本机路径 / 真实项目标题全无）。**`release4` 与 `release5` 里的 zip
-> 一个字节都不要动** —— 要让改动生效就换 `releaseN+1` 再打一次（后端 exe 与前端 bundle 都要重打）。
+**输出目录随版本递增，已交付的包一个字节都不要动**——同名重建会覆盖那份说了「不动了」的 zip
+（打包指南坑 3 就是这条）。哈希只说明"包里那份 == 我刚构建的那份"、**不说明"构建出来的跑的是
+新代码"**（漏跑一次 PyInstaller 打出的包恰好就是"能开、不报错、改动一行没进去"），所以还要把
+那个 exe **真跑起来**验过一次：一次性 `USERPROFILE` + 一个本地假模型端点（不联网、不用真实密钥、
+不花钱）。**如实记一条边界**：我验的是**后端 exe**，**Electron 外壳没有双击验证过**；隐私逐项
+扫描零命中（`.env` / `*.db` / 配置文件 / 密钥值 / 用户名 / 本机路径 / 真实项目标题全无）。
+
+历代交付包与沿革见 [`DECISIONS.md`](./DECISIONS.md) 的「交付包沿革」。
 
 打包态与源码态有四处**必须不同**，每一处错了都是静默失效（都已修，见下）：
 
@@ -179,22 +175,26 @@ PyInstaller **onefile** 打包（`backend/run_desktop.spec`，`console=False`）
 │   ├── src/{App.jsx, api.js, exporters.js, ...}
 │   ├── electron/               # Electron 外壳（打包用）
 │   └── package.json
-├── AI学术写作辅助系统_PRD.md     # 产品需求文档（v1.29）
-├── ARCHITECTURE.md             # 本文
-└── README.md
+├── AI学术写作辅助系统_PRD.md     # 产品需求文档
+├── ARCHITECTURE.md             # 本文（怎么实现）
+├── DECISIONS.md                # 演化账本（为什么变成这样）
+├── DEPLOY.md                   # 部署方案
+├── 源码打包指南.md               # 桌面端打包
+└── README.md                   # 扉页（是什么 / 给谁用 / 怎么跑起来）
 ```
 
 ---
 
 ## 六、刻意不做什么（设计取舍）
 
-每一条都是「能省事但故意没做」，并附原因：
+每一条都是「能省事但故意没做」，并附原因。行内出现的 `v1.2x` 标记是**这条取舍当初为什么成立**
+的痕迹；完整的演化过程（此前怎么做、为什么改）见 [`DECISIONS.md`](./DECISIONS.md)：
 
 | 不做 | 原因 |
 |---|---|
 | 不引 ORM（SQLAlchemy 等） | 3 张表 + 少量列变更（加列四处同改），原生 `sqlite3` 足够；引入 ORM 会让「加一列要改哪几处」这个纪律从代码里消失 |
 | 不引 `python-docx` / `openpyxl` | `.docx`/`.xlsx` 本质是 zip，正文在固定路径的 XML 里，标准库足够。桌面版用 PyInstaller 打包，新增依赖意味着改 spec 的 `hiddenimports` 并重验整条打包链路 |
-| 不用消息队列（Celery / Redis） | 单机单进程应用，`asyncio` 后台任务 + 进度落库已足够，且少一个要部署的部件 |
+| 不用消息队列（Celery / Redis） | 单机单进程应用，`asyncio` 后台任务 + 进度落库已足够，且少一个要部署的部件。**单进程是硬约束而不是现状描述**：任务登记表在进程内，部署时勿加 `--workers`，理由与正确扩容路径见 [`DEPLOY.md`](./DEPLOY.md) §4.3 |
 | 不做向量库 / 相似度检索 | **不做 embedding、不做 RAG 取素材**——没有索引、没有向量、没有「找出最相似的片段喂给模型」。文献与章节的对应关系由**一次显式的调度判断**给出：模型只能从**库内已有的文献**里挑、只能挑**大纲里已有的章节**，白名单校验（标题逐字命中叶子、`doc_id` 在库内、同篇只取第一条）之后仍由代码补齐缺口，因此**引用始终能溯源到确定的文档与页码**——页码由代码按文献页序给出，模型看不到页内容。判断失败（未配置模型 / 超时 / 输出不可解析）不报错，整步退回确定性算法（按上传顺序均匀铺开），响应里的 `method` 如实区分走了哪条路 |
 | 不引状态管理库（Redux / Zustand） | 页面只有一条主流程，props 足够 |
 | 不做公式与代码的专门渲染（LaTeX） | 本轮取舍：理论推导与工程设计两类只做「推导步骤完整」「给出具体参数与接口」这类同义表述层面的约束 |
@@ -231,6 +231,9 @@ PyInstaller **onefile** 打包（`backend/run_desktop.spec`，`console=False`）
 ---
 
 ## 八、如何自行验证以上说法
+
+下面每条都是可以直接跑的 grep / 命令，验证的是**代码**，不是本文档。
+注释里出现的 `v1.2x` 是"这条断言当初为什么加"的痕迹，属**有意保留**——删掉它，后人就不知道这条断言在防什么。
 
 ```bash
 # 1) 没有任何工具调用 —— 应为 0 命中
