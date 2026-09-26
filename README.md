@@ -127,9 +127,25 @@ node --test tests/exporters.test.mjs tests/api.test.mjs \
 
 ## 快速开始
 
-**不想装环境？** 直接下载桌面版：从 [Releases](../../releases) 页面下载 zip，解压双击 `AI学术写作辅助系统.exe` 即可——无需安装 Python / Node / 任何依赖（122 MB，含完整运行时）。
+### 方式一：桌面版（零安装）
 
-**想跑源码？** 三步跑起来（Windows；macOS / Linux 把 `venv/Scripts/` 换成 `venv/bin/`）：
+不想装 Python / Node，直接要一个能双击打开的程序：
+
+| | |
+| --- | --- |
+| **下载** | [**Releases**](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/releases/latest) 页面里的 `AI-Academic-Writing-Assistant-1.0.0-win.zip` |
+| **版本** | [v1.31](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/releases/tag/v1.31) |
+| **体积** | 122 MB（127,885,710 字节） |
+| **SHA256** | `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67` |
+| **平台** | Windows x64（目前只有这一个平台的构建） |
+
+解压 → 双击 `AI学术写作辅助系统.exe` → 完事。**不需要安装任何东西**：Python 运行时、FastAPI、Chromium 都打在里面了。启动后后端跑在 `127.0.0.1:8000`，数据库落在 `~/.academic_writer/app.db`。
+
+> **必须解压整个 zip 再运行。** 不要只把 `AI学术写作辅助系统.exe` 单独拷出来——它启动时要读同目录下的 `resources/`、几个 `.dll` 与 `.pak`，缺一个都打不开。给别人传也要传整个 zip（或解压后的整个文件夹），单独传 exe 是跑不起来的。
+
+### 方式二：源码运行
+
+三步跑起来（Windows；macOS / Linux 把 `venv/Scripts/` 换成 `venv/bin/`）：
 
 ```bash
 # 1) 后端：建虚拟环境、装依赖、（可选）配置 LLM
