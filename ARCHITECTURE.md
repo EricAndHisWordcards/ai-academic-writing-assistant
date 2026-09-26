@@ -93,7 +93,7 @@
 | 校验 / 配置 | pydantic 2.10.4 + pydantic-settings 2.7.0 |
 | 模型调用 | `openai` 1.59.6（`AsyncOpenAI`）——**任意 OpenAI 兼容端点**（DeepSeek / 通义千问 / Moonshot / 智谱 等） |
 | 存储 | SQLite（**原生 `sqlite3`，无 ORM**），单文件 `backend/data/app.db`，3 张表：`projects` / `documents` / `materials` |
-| 并发 | 原生 `asyncio` 后台任务 + 进度落库（无 Celery / Redis）；**必须单进程运行**（任务登记表在进程内，理由见 [`DEPLOY.md`](./DEPLOY.md) §4.3） |
+| 并发 | 原生 `asyncio` 后台任务 + 进度落库（无 Celery / Redis）；**必须单进程运行**（任务登记表在进程内，理由见 [`DEPLOY.md`](./DEPLOY.md) §5.3） |
 | PDF 解析 | pypdf 5.1.0，带**逐页索引**以便引用定位 |
 | 材料解析 | `.docx` / `.xlsx` 用**标准库 `zipfile` + `ElementTree`** 直读 OOXML；`.txt/.md/.csv/.json/.log` 分级编码回退 |
 | 上传与配置 | python-multipart 0.0.20（文件上传）+ python-dotenv 1.0.1（`.env`） |
@@ -201,7 +201,7 @@ sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`），
 |---|---|
 | 不引 ORM（SQLAlchemy 等） | 3 张表 + 少量列变更（加列四处同改），原生 `sqlite3` 足够；引入 ORM 会让「加一列要改哪几处」这个纪律从代码里消失 |
 | 不引 `python-docx` / `openpyxl` | `.docx`/`.xlsx` 本质是 zip，正文在固定路径的 XML 里，标准库足够。桌面版用 PyInstaller 打包，新增依赖意味着改 spec 的 `hiddenimports` 并重验整条打包链路 |
-| 不用消息队列（Celery / Redis） | 单机单进程应用，`asyncio` 后台任务 + 进度落库已足够，且少一个要部署的部件。**单进程是硬约束而不是现状描述**：任务登记表在进程内，部署时勿加 `--workers`，理由与正确扩容路径见 [`DEPLOY.md`](./DEPLOY.md) §4.3 |
+| 不用消息队列（Celery / Redis） | 单机单进程应用，`asyncio` 后台任务 + 进度落库已足够，且少一个要部署的部件。**单进程是硬约束而不是现状描述**：任务登记表在进程内，部署时勿加 `--workers`，理由与正确扩容路径见 [`DEPLOY.md`](./DEPLOY.md) §5.3 |
 | 不做向量库 / 相似度检索 | **不做 embedding、不做 RAG 取素材**——没有索引、没有向量、没有「找出最相似的片段喂给模型」。文献与章节的对应关系由**一次显式的调度判断**给出：模型只能从**库内已有的文献**里挑、只能挑**大纲里已有的章节**，白名单校验（标题逐字命中叶子、`doc_id` 在库内、同篇只取第一条）之后仍由代码补齐缺口，因此**引用始终能溯源到确定的文档与页码**——页码由代码按文献页序给出，模型看不到页内容。判断失败（未配置模型 / 超时 / 输出不可解析）不报错，整步退回确定性算法（按上传顺序均匀铺开），响应里的 `method` 如实区分走了哪条路 |
 | 不引状态管理库（Redux / Zustand） | 页面只有一条主流程，props 足够 |
 | 不做公式与代码的专门渲染（LaTeX） | 本轮取舍：理论推导与工程设计两类只做「推导步骤完整」「给出具体参数与接口」这类同义表述层面的约束 |

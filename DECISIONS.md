@@ -217,8 +217,8 @@
 ## v1.30（2026-09-26，本轮部署修复）
 
 ### D-29 · 必须单进程运行，不加 `--workers`
-- **此前**：`DEPLOY.md` §4.3 建议 `uvicorn --workers 4`；`backend/Dockerfile` 的注释也写着"生产模式：多 worker"，而 CMD 本身是单进程——注释与命令自相矛盾。
-- **现在**：文档与镜像注释统一为单进程，并写明理由（见 `DEPLOY.md` §4.3）。
+- **此前**：`DEPLOY.md` §5.3 建议 `uvicorn --workers 4`；`backend/Dockerfile` 的注释也写着"生产模式：多 worker"，而 CMD 本身是单进程——注释与命令自相矛盾。
+- **现在**：文档与镜像注释统一为单进程，并写明理由（见 `DEPLOY.md` §5.3）。
 - **为什么**：运行中的生成任务登记在**进程内**字典里（`tasks._TASKS` / `projects._GEN_TASKS`），"同一项目同一时刻只有一个生成在跑"的 409 互斥完全依赖它——多 worker 后每个 worker 各持一份登记表，互斥整体失效，同一项目会被两个 worker 同时生成：双倍 token 消耗、状态互相覆盖。真扛不住时的正确路径是**把任务登记表外置**（如 Redis），而不是加 worker。
 - **改写前出处**：DEPLOY.md L14 / L112；backend/Dockerfile L18
 
