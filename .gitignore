@@ -9,10 +9,11 @@ release4/
 release*/
 # Vite 加载 vite.config.js 时会在旁边写一份带时间戳的转译副本
 # （vite.config.js.timestamp-<毫秒>-<hash>.mjs）。它**含本机绝对路径**：
-#   import { defineConfig } from "file:///D:/<...>/frontend/node_modules/vite/..."
+#   import { defineConfig } from "file:///<盘符>:/<项目路径>/frontend/node_modules/vite/..."
 # —— 是发布前那轮"本机路径扫描"要拦的东西，而当时的正则只认反斜杠形态
-# （`D:\<项目路径>`），认不出这里的正斜杠 + URL 编码，于是它跟着一次
+# （`<盘符>:\<目录>...`），认不出这里的正斜杠 + URL 编码，于是它跟着一次
 # `git add -A` 进了仓库（commit fc93fdb，公开仓库，已如实记档）。
+# **这条注释本身也刻意不写具体路径** —— 它会随仓库上传，写进来等于换个地方泄。
 *.timestamp-*.mjs
 vite.config.js.timestamp-*
 
