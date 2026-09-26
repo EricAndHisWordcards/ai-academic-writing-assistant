@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# 两条 job 各自独立，互不阻塞：后端 pytest（1041 条）、前端 node --test（39 条）。
+#
+# 刻意不做的两件事（不是遗漏，别顺手补上）：
+#   1. 不跑 `vite build`：devDependencies 里含 electron（约 100MB+），为验证一次前端
+#      编译去装它不划算。需要时再单独加一条 job。
+#   2. 不做 Windows runner：本机开发已是 Windows，Linux runner 提供的是**第二套环境**
+#      的证据（SQLite WAL 在 Linux 上的行为、路径分隔符、行尾），价值更大。
+jobs:
+  backend:
+    name: 后端 pytest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      # backend/pytest.ini 已配 testpaths = tests，无需额外指定路径。
+      # 测试默认离线：conftest 的 _isolate_llm_config 会清空本机 .env 带入的 LLM 配置，
+      # 所以 CI 上不需要任何 secret 也不会真的发起网络请求。
+      - name: 跑全量 pytest
+        run: python -m pytest -q
+
+  frontend:
+    name: 前端 node --test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # 零依赖：这四个 .mjs 全部打桩（stop-backend 用假 spawn 且显式注入 platform，
+      # wait-for-backend 用假 http，api.test 只断言 URL 字符串），不真起进程、不监听
+      # 端口，所以不需要 npm ci。
+      #
+      # **逐个点名，不要传目录**：`node --test <目录>` 在 Windows 上会把目录当成要
+      # require 的模块（MODULE_NOT_FOUND）—— 这个坑 backend/tests/test_frontend_node.py
+      # 第 18 行已经注释过一次，这里照抄同样的写法，别再踩第二次。
+      - name: 跑前端用例（39 条）
+        run: node --test tests/exporters.test.mjs tests/api.test.mjs tests/wait-for-backend.test.mjs tests/stop-backend.test.mjs
