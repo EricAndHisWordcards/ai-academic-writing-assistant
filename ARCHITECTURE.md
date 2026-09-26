@@ -97,7 +97,7 @@
 | PDF 解析 | pypdf 5.1.0，带**逐页索引**以便引用定位 |
 | 材料解析 | `.docx` / `.xlsx` 用**标准库 `zipfile` + `ElementTree`** 直读 OOXML；`.txt/.md/.csv/.json/.log` 分级编码回退 |
 | 上传与配置 | python-multipart 0.0.20（文件上传）+ python-dotenv 1.0.1（`.env`） |
-| 测试 | pytest 8.3.4 + httpx，**1038 个用例，默认离线**（真实模型调用显式打桩） |
+| 测试 | pytest 8.3.4 + httpx，**1041 个用例，默认离线**（真实模型调用显式打桩） |
 
 ### 前端
 
@@ -169,7 +169,7 @@ sha256 `89e74fcf461587077e1bc1594ba3e98f50c854b1665b5a3f1af4e39319599701`），
 │   │   └── routers/            # API 路由 + 闸门
 │   │       ├── projects.py     # 项目主路由（全部业务入口）
 │   │       └── config.py       # 配置路由（Key 查看 / 更新）
-│   ├── tests/                  # pytest，1038 个用例
+│   ├── tests/                  # pytest，1041 个用例
 │   └── requirements.txt
 ├── frontend/                   # Vite + React 前端
 │   ├── src/{App.jsx, api.js, exporters.js, ...}
@@ -219,9 +219,9 @@ sha256 `89e74fcf461587077e1bc1594ba3e98f50c854b1665b5a3f1af4e39319599701`），
 | 指标 | 数值 |
 |---|---|
 | 后端（`backend/app`） | 29 个 Python 文件，约 9.6k 行 |
-| 后端测试 | 26 个文件，约 13.3k 行，**1038 个用例全绿** |
+| 后端测试 | 26 个文件，约 13.3k 行，**1041 个用例全绿** |
 | 前端测试 | `frontend/tests/` 4 个 `.mjs`，**39 个 `node --test` 用例**（Node 24 内置，零依赖） |
-| 前端（`frontend/src`） | 7 个文件，约 5.6k 行（其中 `App.jsx` 约 3.9k 行、`exporters.js` 约 0.35k 行） |
+| 前端（`frontend/src`） | 7 个文件，约 5.6k 行（其中 `App.jsx` 约 3,925 行、`exporters.js` 约 0.35k 行） |
 | 论文类型 | 7 类，每类一条差异化工作流 |
 | 处理环节（"Agent"） | 10 个模块，其中 9 个调用模型、共 10 个调用点 |
 | 状态机 | 10 个状态 |

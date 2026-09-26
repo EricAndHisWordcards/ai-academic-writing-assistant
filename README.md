@@ -2,7 +2,7 @@
 
 <!-- 徽章位：推上 GitHub 后可用 shields.io 补 tests / Python / Node / license 徽章（需填仓库地址），此处先留空位 -->
 
-**1038 个后端用例全绿 · 39 个前端用例 · 七类论文各一条差异化工作流 · 两道人工确认闸门 · 0 幻觉引用 · 单文件 SQLite、无重型框架**
+**1041 个后端用例全绿 · 39 个前端用例 · 七类论文各一条差异化工作流 · 两道人工确认闸门 · 0 幻觉引用 · 单文件 SQLite、无重型框架**
 
 面向高校学生与科研人员的 AI 学术写作辅助系统。采用 **GUI 卡片 + 后台 Agent 工作流** 的混合交互模式，通过可视化引导、强制约束与分步打卡，解决生成式 AI 写作的九类痛点：**字数缩水、文献虚构、逻辑失控、AI 感过强、作者自己的东西进不去、分析章节在编数据、工序一刀切、结构错位、正文按类型写不出来**。
 
@@ -87,7 +87,7 @@
 │   │   └── routers/
 │   │       ├── projects.py         # 项目主路由（全部业务入口）
 │   │       └── config.py           # 配置路由（Key 查看 / 更新）
-│   ├── tests/               # pytest（1038 个用例，默认离线运行）
+│   ├── tests/               # pytest（1041 个用例，默认离线运行）
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/                # Vite + React 前端
@@ -113,7 +113,7 @@ cd backend
 venv/Scripts/python -m pytest -q
 ```
 
-测试默认离线（不调用 LLM），需要真实模型的用例会显式打桩（当前 1038 个用例）。
+测试默认离线（不调用 LLM），需要真实模型的用例会显式打桩（当前 1041 个用例）。
 
 前端四个纯 JS 模块（`exporters.js` / `api.js` / `electron/wait-for-backend.cjs` /
 `electron/stop-backend.cjs`）另有 39 个 `node --test` 行为用例（Node 24 内置测试运行器，

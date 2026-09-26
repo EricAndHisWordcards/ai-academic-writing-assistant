@@ -100,6 +100,7 @@ docker compose down
 | `LLM_MODEL` | 否 | 模型名（默认 `deepseek-chat`） |
 | `LLM_TEMPERATURE` | 否 | 采样温度（默认 0.3） |
 | `DATABASE_PATH` | 否 | 数据库路径（Docker 内默认 `/app/data/app.db`） |
+| `DATABASE_WAL` | 否 | SQLite WAL，**默认 `true`**。置 `false` **只影响新建的库**（已是 WAL 的库不会被降级，见 4.3）；生产不建议关闭，也不要写进 `.env` |
 
 ### 4.2 安全建议
 
@@ -115,7 +116,12 @@ docker compose down
   的 409 互斥完全依赖它——多 worker 后每个 worker 各持一份登记表，互斥整体失效，
   同一项目会被两个 worker 同时生成：双倍 token 消耗、状态互相覆盖。当前单机规模下
   单进程 + 异步 IO 足够；真扛不住时的正确路径是把任务登记表外置（如 Redis），而不是加 worker。
-- **数据库 WAL**：`db.get_conn()` 已开启 WAL（读不阻塞写），前端进度轮询不会被生成写入挡住。
+- **数据库 WAL**：`db.get_conn()` 里 `PRAGMA journal_mode = WAL`（读不阻塞写），由环境变量
+  `DATABASE_WAL` 控制、**默认开** —— 前端进度轮询不会被生成写入挡住。唯一的例外是测试：
+  `tests/conftest.py` 的 `tmp_db` 夹具会在 `init_db()` **之前**把它压成 `false`，因为 WAL 下
+  每个连接干净关闭都要建/拆一次 `-wal` / `-shm`，237 个建库用例会把全量 pytest 从约 5 分钟
+  拖到约 24 分钟。**不要在生产关闭它，也不要把它写进 `.env`**（写了也只影响新建的库，容易
+  误导排障）。
 - **上传体积**：批量 PDF 上传按"整批之和"计体积，`frontend/nginx.conf` 已设
   `client_max_body_size 200m`（默认 1m 会导致上传 413）；单篇更大时相应调大。
 - **长文生成超时**：LLM 分段生成耗时较长，Nginx `proxy_read_timeout` 已设为 300s；若生成更长的论文需进一步调大。
