@@ -7,7 +7,10 @@ App.jsx 里的 FALLBACK_PAPER_TYPES / FALLBACK_TYPE_LABELS / FALLBACK_TYPE_CONFI
 
 写作语言与著录格式的几张 FALLBACK_* 表同理（见各自的用例）。
 
-所以这里把 App.jsx 当**文本**读，不跑 node：它本来就是一份数据镜像，要断言的是数据。
+**位置不参与断言**：这些表住在 `App.jsx` 还是 `constants.js` 都可以，夹具读的是整个
+`src/` 树（见 `jsx`）。要说的是数据一不一致，不是它被摆在哪个文件里。
+
+所以这里把前端源码当**文本**读，不跑 node：它本来就是一份数据镜像，要断言的是数据。
 """
 import re
 from pathlib import Path
@@ -17,6 +20,7 @@ import pytest
 from app import paper_types
 
 APP_JSX = Path(__file__).resolve().parents[2] / "frontend" / "src" / "App.jsx"
+SRC_DIR = APP_JSX.parent
 
 # 前端只镜像它真用得上的字段。structure_note / writing_note 是进提示词的文本，
 # 前端从不读，抄一份过去是纯粹的漂移来源（App.jsx 里有同一条注释）。
@@ -28,8 +32,26 @@ FRONTEND_FIELDS = [
 
 @pytest.fixture(scope="module")
 def jsx() -> str:
-    assert APP_JSX.exists(), f"找不到前端源码：{APP_JSX}"
-    return APP_JSX.read_text(encoding="utf-8")
+    """**整个前端源码树**拼接（App.jsx 排在最后）。
+
+    这些断言要证的是"前端那份镜像与后端逐字段一致"，而这件事与那份镜像住在哪个文件
+    无关。v1.32 把 App.jsx 拆成多个文件（常量搬到了 `constants.js`）之后，只读 App.jsx
+    会直接找不到 `const NAME = ...` 而报错；读全树则一条都不用改。
+
+    与 test_frontend_conventions.py 那份同名夹具的差别：这里**不去注释** —— 这些
+    helper 解析的是数据表本身，注释本来就在表体内（例如 FALLBACK_TYPE_CONFIG 每个类型
+    条目上方的说明），去掉反而会改变解析结果。
+
+    App.jsx 排最后：`_config_entries` 用 `tail.index("\n}\n", ...)` 找表尾，把 App 放在
+    末尾可以让"最后一个表"的右边界与拆分前保持一致。
+    """
+    files = sorted(p for p in SRC_DIR.rglob("*") if p.suffix in (".js", ".jsx"))
+    ordered = [p for p in files if p.name != "App.jsx"] + [APP_JSX]
+    parts = []
+    for path in ordered:
+        assert path.exists(), f"找不到前端源码：{path}"
+        parts.append(path.read_text(encoding="utf-8"))
+    return "\n".join(parts)
 
 
 def _const_list(jsx: str, name: str) -> list[str]:

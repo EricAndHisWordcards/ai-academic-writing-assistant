@@ -4,7 +4,8 @@
 别的地方能钉住：前端进不了 pytest（没有 JS 测试运行器），而这些约定的失效方式恰恰都是
 **静默**的：多一个蓝按钮不会报错、多一句假原因也不会报错、框里多一个删不掉的 "0" 也不会
 报错，只会让用户按错顺序点、按一句假的原因去理解自己的项目状态、或者把一个数字敲成
-十倍。所以照 test_frontend_mirror.py 的既有做法，把 App.jsx 当文本读。
+十倍。所以照 test_frontend_mirror.py 的既有做法，把**前端源码**当文本读（v1.32 之前
+只有 App.jsx 一个文件，之后是 `src/` 下的整棵树 —— 见 `jsx` 夹具）。
 
 前两条来自已记档的决策（PRD 决策 22 / 4.5 的界面安排），不是本轮新发明的：
 主按钮 = 你现在该点的那一个，任何时刻恰好一个；横幅讲的是"此刻仍然生效的事实"，
@@ -22,6 +23,7 @@ import pytest
 
 APP_JSX = Path(__file__).resolve().parents[2] / "frontend" / "src" / "App.jsx"
 APP_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "App.css"
+SRC_DIR = APP_JSX.parent
 
 
 def _code_only(src: str) -> str:
@@ -37,10 +39,34 @@ def _code_only(src: str) -> str:
     return src
 
 
+def _source_files() -> list[Path]:
+    """`frontend/src` 下全部 JS/JSX 源码，顺序**确定**。
+
+    **App.jsx 排在最后**，这一个是刻意的：`_app_method` 取右边界靠的是"切到下一个
+    **两格缩进**的 function 为止"，而两格缩进的方法只存在于 App 组件内部。把 App 放在
+    末尾，它最后一个方法的右边界就是整个字符串的末尾 —— 与拆分前逐字相同；放在中间
+    的话，那个切片会一路吃到后面那个文件里去，**不报错，只是悄悄多看了一段代码**。
+    """
+    files = sorted(p for p in SRC_DIR.rglob("*") if p.suffix in (".js", ".jsx"))
+    return [p for p in files if p.name != "App.jsx"] + [APP_JSX]
+
+
 @pytest.fixture(scope="module")
 def jsx() -> str:
-    assert APP_JSX.exists(), f"找不到前端源码：{APP_JSX}"
-    return _code_only(APP_JSX.read_text(encoding="utf-8"))
+    """**整个前端源码树**（去注释后拼接），不是单独一个 App.jsx。
+
+    这些断言要证明的是"这件事在**前端**只有一处实现"—— 那本来就不该只在一个文件里
+    查。v1.32 把 App.jsx 拆成多个文件之后，若仍只读它一个，一部分断言会找不到目标而
+    报错（看得见），更糟的是**另一部分会照旧通过、却不再覆盖搬走的那段代码**（看不
+    见）。所以范围取全树：每条断言的语义不变，覆盖面与它声称的一致。
+
+    拼接顺序见 `_source_files()`。
+    """
+    parts = []
+    for path in _source_files():
+        assert path.exists(), f"找不到前端源码：{path}"
+        parts.append(_code_only(path.read_text(encoding="utf-8")))
+    return "\n".join(parts)
 
 
 def _function_body(jsx: str, name: str) -> str:
@@ -553,14 +579,16 @@ def test_topic_step_language_note_comes_from_the_backend_table(jsx):
 # ---------------------------------------------------------------
 # 渲染期异常的兜底（ErrorBoundary）
 # ---------------------------------------------------------------
-SRC_DIR = APP_JSX.parent
 MAIN_JSX = SRC_DIR / "main.jsx"
 BOUNDARY_JSX = SRC_DIR / "ErrorBoundary.jsx"
 
 
 def _src_files() -> list[Path]:
-    """`frontend/src` 下全部 JS/JSX 源码（用来断言「某样东西全树只有一处」）。"""
-    return sorted(p for p in SRC_DIR.rglob("*") if p.suffix in (".js", ".jsx"))
+    """`frontend/src` 下全部 JS/JSX 源码（用来断言「某样东西全树只有一处」）。
+
+    与 `_source_files()` 同一份实现：这里只需要"读到每一个文件"，与拼接顺序无关。
+    """
+    return _source_files()
 
 
 def test_app_is_wrapped_in_an_error_boundary_at_the_root():
