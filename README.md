@@ -102,10 +102,14 @@
 │   └── .env.example
 ├── frontend/                # Vite + React 前端
 │   ├── src/
-│   │   ├── App.jsx          # 主组件 + 分步工作流
+│   │   ├── App.jsx          # 根组件：状态、闸门判据、renderStep（1,661 行）
+│   │   ├── constants.js     # 兜底镜像与状态锚点等 27 张数据表
+│   │   ├── helpers.js       # 10 个纯函数（wordsNumber / configFor / buildSteps …）
+│   │   ├── steps/           # 7 个步骤组件（TopicStep / OutlineStep / CitationStep …）
+│   │   ├── components/      # 4 个通用组件（WorkingBar / EditableTitle / SettingsModal …）
 │   │   ├── api.js           # API 客户端
 │   │   ├── exporters.js     # 三种导出格式（Word 为手写 OOXML）
-│   │   └── ...
+│   │   └── ErrorBoundary.jsx / main.jsx
 │   ├── tests/               # node:test 行为用例（exporters / api / wait-for-backend / stop-backend）
 │   └── package.json
 ├── AI学术写作辅助系统_PRD.md  # 产品需求文档

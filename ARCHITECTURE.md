@@ -105,7 +105,7 @@
 |---|---|
 | 框架 | React 18.3.1（**无状态管理库**） |
 | 构建 | Vite 5.4.21 + @vitejs/plugin-react 4.7.0 |
-| 主组件 | `src/App.jsx`（3,925 行），承载分步工作流 |
+| 结构 | **v1.32 起拆成 18 个文件**（此前是 `App.jsx` 一个 3,925 行的文件）：`App.jsx` 1,661 行只剩根组件；数据表在 `constants.js`、纯函数在 `helpers.js`、7 个步骤组件在 `steps/`、4 个通用组件在 `components/`。拆分的边界是"谁和谁共享状态"而不是行数 —— 根组件留下的恰好是**不能拆的那部分**（35 个 useState、两套在跑登记、把它们分发给各步的 renderStep） |
 | API 客户端 | `src/api.js`，手写。非 2xx 一律把后端的 `{detail: "中文原因"}` 原样抛出（`errorDetail` 一处实现，三个入口共用），取不到才退回通用文案 |
 | 导出 | `src/exporters.js`（纯 JS，不含 React）：Markdown / 纯文本 / **Word（.docx，手写 OOXML + 不压缩 zip）**。放在单独模块而不是塞进 `App.jsx`，一是三种格式共用同一份「导出文档」形状（标题、章节、参考文献只拼一次），二是它不含 React，可以直接用 Node 跑起来验证。**文件不经过后端**；后端只有一个回执路由（`POST /projects/{id}/export`），它只写状态 |
 
@@ -182,7 +182,14 @@ sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`），
 │   ├── tests/                  # pytest，1041 个用例
 │   └── requirements.txt
 ├── frontend/                   # Vite + React 前端
-│   ├── src/{App.jsx, api.js, exporters.js, ...}
+│   ├── src/
+│   │   ├── App.jsx             # 根组件（1,661 行）：状态、闸门判据、renderStep
+│   │   ├── constants.js        # 兜底镜像与状态锚点等 27 张数据表
+│   │   ├── helpers.js          # 10 个纯函数（wordsNumber / configFor / buildSteps …）
+│   │   ├── steps/              # 7 个步骤组件（TopicStep / OutlineStep / …）
+│   │   ├── components/         # 4 个通用组件（WorkingBar / EditableTitle / …）
+│   │   ├── api.js / exporters.js / ErrorBoundary.jsx / main.jsx
+│   │   ├── tests/{App.jsx 的读法见 backend/tests/test_frontend_*}
 │   ├── electron/               # Electron 外壳（打包用）
 │   └── package.json
 ├── AI学术写作辅助系统_PRD.md     # 产品需求文档
@@ -231,7 +238,7 @@ sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`），
 | 后端（`backend/app`） | 29 个 Python 文件，约 9.6k 行 |
 | 后端测试 | 26 个文件，约 13.3k 行，**1041 个用例全绿** |
 | 前端测试 | `frontend/tests/` 4 个 `.mjs`，**39 个 `node --test` 用例**（Node 24 内置，零依赖） |
-| 前端（`frontend/src`） | 7 个文件，约 5.6k 行（其中 `App.jsx` 约 3,925 行、`exporters.js` 约 0.35k 行） |
+| 前端（`frontend/src`） | **18 个文件，约 4.7k 行**（v1.32 拆分后：`App.jsx` 1,661、7 个步骤组件 1,741、4 个通用组件 295、`constants.js` 281、`exporters.js` 349、`api.js` 199、`helpers.js` 94） |
 | 论文类型 | 7 类，每类一条差异化工作流 |
 | 处理环节（"Agent"） | 10 个模块，其中 9 个调用模型、共 10 个调用点 |
 | 状态机 | 10 个状态 |
@@ -337,7 +344,7 @@ grep -rn "serverBusy\|errorDetail\|markExported" frontend/src
 #     另一半是"文案不猜原因"：横幅里的每一句都必须在**每一种**会渲染它的情形下成立，
 #     所以那两句只对"调度之后又加了文献"成立的断言被删掉，且测在**去注释**的源码上
 #     （本项目的注释刻意把"这里曾经说过一句假话"的原文逐字留着当记录）
-grep -rn "clustersNeedConfirm" frontend/src/App.jsx
+grep -rn "clustersNeedConfirm" frontend/src
 grep -rn "def test_outline_card_has_no_hardcoded_primary_button\|def test_citation_banner_does_not_assert_a_cause" backend/tests/test_frontend_conventions.py
 
 # 18) 目标总字数的下限：数字的真身只有一处（后端 projects.MIN_TARGET_WORDS），经 /api/meta
@@ -381,7 +388,7 @@ grep -rn "def test_title_edit_is_not_a_no_op\|def test_patch_title_refreshes_the
 #     **不做白名单**（越界的字母在这里放行、由渲染侧回落 J），所以抽查取提示词的那条测试
 #     叫 test_source_type_is_not_whitelisted_at_extraction，别把它当遗漏
 grep -rn "_journal_segment\|normalize_pages\|normalize_authors\|SOURCE_TYPES" backend/app
-grep -rn "SOURCE_TYPE_LETTERS" frontend/src/App.jsx
+grep -rn "SOURCE_TYPE_LETTERS" frontend/src
 grep -rn "def test_frontend_mirrors_source_type_whitelist\|def test_gb7714_journal_segment_degrades_by_missing_fields\|def test_document_edit_type_options_are_derived_not_hand_written\|def test_reference_list_preview_turns_off_the_ol_numbering" backend/tests
 
 # 21) 写作语言：每条判据只有一处。writing_lang.normalize 回答"这个项目是什么语言"（未知值
@@ -420,7 +427,7 @@ grep -rn "def test_english_skeleton_has_the_same_shape\|def test_english_skeleto
 #     里再实现一遍：做不到同步却号称同步，比没有更坏（formatted 一缺，英文预览就会印出 GB/T
 #     形态的姓名）。最后一条 grep **应为 0 命中**：只服务于那个兜底的 FALLBACK_SOURCE_TYPE 与
 #     normalizePages 已随它删掉（test_frontend_mirror 的注释里留着它们的名字当记录）
-grep -rn "props.citeStyles.map(\|props.citeStyleLabels\[" frontend/src/App.jsx
+grep -rn "props.citeStyles.map(\|props.citeStyleLabels\[" frontend/src
 grep -rn "def test_cite_style_options_are_derived_not_hand_written\|def test_fallback_writing_lang_mirrors_match_the_backend\|def test_fallback_cite_styles_match_the_backend" backend/tests
 grep -rn "FALLBACK_SOURCE_TYPE\|normalizePages" frontend/src backend/app
 
@@ -441,15 +448,15 @@ grep -rn "or \"gb7714\"" backend/app
 #     "改回修复前的写法就变红"。① **使用处必须与本文件的 import 行同名**：referencesHeading 在
 #     App.jsx 里被用到，**且它的 import 行里有它** —— 只断言"导出模块里有这个名字"是拦不住白屏的
 #     （少一行 import 不是退回中文，是渲染期 ReferenceError + 整个 root 卸载；frontend/src 全树
-#     没有 error boundary）。② **读数字只有一处入口**：剥注释后 App.jsx 里**不出现 parseInt(**，
+#     没有 error boundary）。② **读数字只有一处入口**：剥注释后**整个 frontend/src** 里**不出现 parseInt(**，
 #     两个每节字数输入框与「目标总字数」都走 wordsNumber，且"删空 = 未分配"（0 是合法值）必须保留。
-#     ③ **格式合法性只有一处**：formatsFor(...).includes 全文件命中**恰好 1 次**（就在
+#     ③ **格式合法性只有一处**：formatsFor(...).includes 全树命中**恰好 1 次**（就在
 #     effectiveFormatFor 里），loadProject 与改语言两处都读它、不许各自内联一遍。
-#     ④ **语言说明来自后端而非前端手写**：App.jsx 里**不出现 writingLang === 'en'**，"被本语言
+#     ④ **语言说明来自后端而非前端手写**：**整个 frontend/src** 里**不出现 writingLang === 'en'**，"被本语言
 #     排除掉的格式"的说明由 citation_format_notes_by_lang 给 —— 它的键集固定为**全部格式**（英文下
 #     那条 GB/T 7714 说明的用途正是解释它为什么不在列表里），所以 /api/meta 下发的键集要与
 #     SUPPORTED_FORMATS 相等，前端的 FALLBACK_SUPPORTED_FORMATS 与后端逐项对账
-grep -rn "referencesHeading\|parseInt(\|formatsFor(\|writingLang === 'en'\|FALLBACK_SUPPORTED_FORMATS" frontend/src/App.jsx
+grep -rn "referencesHeading\|parseInt(\|formatsFor(\|writingLang === 'en'\|FALLBACK_SUPPORTED_FORMATS" frontend/src
 grep -rn "def test_export_layout_language_comes_from_the_project\|def test_numbers_are_read_through_wordsNumber_only\|def test_effective_citation_format_has_a_single_derivation_point\|def test_topic_step_language_note_comes_from_the_backend_table\|def test_fallback_supported_formats_match_the_backend" backend/tests
 
 # 26) 新加的断言"有牙"要**当场跑出来**，不靠推断（v1.27 的做法，可复用）：说"这条断言在修复前必然
@@ -561,8 +568,8 @@ grep -rn "def test_gb7714_monograph_template\|def test_gb7714_dissertation_templ
 #     发现一节都不用写，只把 status 原样写回 completed；项目已导出过时还会把 exported 顶回
 #     completed）。「重写正文」在任何情况下都还在，蓝位被那两个补救占着时它与「查看导出结果 →」
 #     一起退到次要位
-grep -rn "POLLED_TASK_KINDS\|scheduleInFlight" frontend/src/App.jsx
-grep -rn "viewPrimary\|开始分段生成\|查看导出结果" frontend/src/App.jsx
+grep -rn "POLLED_TASK_KINDS\|scheduleInFlight" frontend/src
+grep -rn "viewPrimary\|开始分段生成\|查看导出结果" frontend/src
 grep -rn "def test_citation_schedule_reports_progress_while_it_waits\|def test_citation_schedule_marks_progress_done\|def test_citation_schedule_failure_does_not_leave_a_running_bar\|def test_citation_schedule_rejected_leaves_no_trace\|def test_citations_is_a_polled_task_kind\|def test_citation_step_renders_its_progress_bar\|def test_finish_task_reconciles_the_binding_for_citations\|def test_schedule_citations_has_a_client_side_timeout\|def test_generate_step_view_button_takes_over_the_primary_slot" backend/tests
 ```
 
