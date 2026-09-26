@@ -1,6 +1,16 @@
 # AI 学术写作辅助系统
 
-<!-- 徽章位：推上 GitHub 后可用 shields.io 补 tests / Python / Node / license 徽章（需填仓库地址），此处先留空位 -->
+[![CI](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/EricAndHisWordcards/ai-academic-writing-assistant)](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+![Python](https://img.shields.io/badge/python-3.12-blue.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)
+![Desktop](https://img.shields.io/badge/desktop-Windows_x64-0078D6.svg)
+
+<!-- 只放**能自助验证**的徽章：CI 与 Release 是 shields/GitHub 实时读仓库状态的，不会说谎；
+     License / Python / Node / Desktop 是绑定在仓库文件上的事实（LICENSE、ci.yml、engines）。
+     刻意不放"测试 1041 条"这类**静态数字**徽章——它长得像实时、实际要手改，正是本项目
+     一直在防的"宣称 vs 可验证"那种负债。测试是否通过，看上面前两个徽章即可。 -->
 
 **1041 个后端用例全绿 · 39 个前端用例 · 七类论文各一条差异化工作流 · 两道人工确认闸门 · 0 幻觉引用 · 单文件 SQLite、无重型框架**
 
