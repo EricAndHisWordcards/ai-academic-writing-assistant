@@ -225,7 +225,7 @@
 ### D-30 · 数据库开启 WAL，并加 `DATABASE_WAL` 开关让测试期关闭
 - **此前**：默认 journal 模式下，生成循环持续写 `generation_state_json` / `task_state_json`，与前端同一时间的进度轮询**互相抢写锁**。
 - **现在**：`db.get_conn()` 里 `PRAGMA journal_mode = WAL`，由 `settings.database_wal`（默认 True，env `DATABASE_WAL`）控制；`backend/tests/conftest.py` 的 `tmp_db` 夹具在 `init_db()` **之前**把它压成 False。三条回归测试在 `tests/test_db.py`。
-- **为什么**：轮询的读不该被生成的写挡住。**代价如实记档（已用开关消除）**：WAL 的开销**不在那条 pragma**（模式持久化在库文件上，对已是 WAL 的库它是幂等确认），而在「最后一个连接干净关闭时 SQLite 必须 checkpoint 并删掉 `-wal` / `-shm`」——`get_conn()` 一次操作一个连接，于是每个连接都完整付一遍。测试里 237 个用例各建一个临时库，`init_db()` 自身 + 5 个 migration = 6 次连接起步 ⇒ 1422 次，全量 pytest 约 5 分钟 → 约 24 分钟。**把 pragma 挪进 `init_db()` 一分钱都省不了**（模式已写进库文件，后续连接照样是 WAL），所以选的是开关而不是搬家，也不是按路径是否临时来隐式推断（后者配错时会悄悄关掉生产的 WAL，正是本条要防的现场）。
+- **为什么**：轮询的读不该被生成的写挡住。**代价如实记档（已用开关消除）**：WAL 的开销**不在那条 pragma**（模式持久化在库文件上，对已是 WAL 的库它是幂等确认），而在「最后一个连接干净关闭时 SQLite 必须 checkpoint 并删掉 `-wal` / `-shm`」——`get_conn()` 一次操作一个连接，于是每个连接都完整付一遍。测试里 237 个用例各建一个临时库，`init_db()` 自身 + 5 个 migration = 6 次连接起步 ⇒ 1422 次，全量 pytest 从**约 6 分钟涨到约 24 分钟**（Windows 本机**安静**实测 374s / 1041 条；⚠️ 这个数字对并行负载极其敏感 —— 边跑测试边做别的事时实测到过 10.7 分钟，**不要拿那种数字当基线**，也不要反过来拿它当"开关没生效"的证据）。**把 pragma 挪进 `init_db()` 一分钱都省不了**（模式已写进库文件，后续连接照样是 WAL），所以选的是开关而不是搬家，也不是按路径是否临时来隐式推断（后者配错时会悄悄关掉生产的 WAL，正是本条要防的现场）。
 - **刻意保留的偏向**：关掉时**不**反向执行 `journal_mode = DELETE` —— 那需要独占访问（要 checkpoint 并删 `-wal`），会在别的连接还开着时回 `SQLITE_BUSY`。于是 `DATABASE_WAL=false` 的真实含义是「**新建**的库不用 WAL；**已是 WAL 的库保持 WAL**」：就算被误配，生产也不会被静默降级。
 - **改写前出处**：backend/app/db.py L88
 
