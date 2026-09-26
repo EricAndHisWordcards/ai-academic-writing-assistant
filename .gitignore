@@ -1,0 +1,51 @@
+# ===== 依赖与构建产物 =====
+node_modules/
+dist/
+build/
+release/
+release2/
+release3/
+release4/
+release*/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# ===== 数据库与运行时数据 =====
+backend/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ===== 密钥与配置（勿提交）=====
+.env
+*.pem
+*.key
+
+# ===== 测试与缓存 =====
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ===== 临时调试文件 =====
+_*.txt
+_*.py
+_*.ps1
+
+# ===== IDE 与本地工具 =====
+.idea/
+.vscode/
+*.swp
+# Claude Code 本地配置（settings.local.json 含本机绝对路径，勿入库）
+.claude/
+# WorkBuddy 项目记忆（个人工作日志，勿入库）
+.workbuddy/
+
+# ===== 系统 =====
+.DS_Store
+Thumbs.db

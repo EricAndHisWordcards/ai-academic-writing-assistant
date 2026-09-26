@@ -1,0 +1,4 @@
+# .dockerignore — 前端
+node_modules/
+dist/
+.env

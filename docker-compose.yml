@@ -1,0 +1,28 @@
+# docker-compose.yml：一键部署前后端
+services:
+  backend:
+    build: ./backend
+    container_name: academic-backend
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+      - DATABASE_PATH=/app/data/app.db
+    volumes:
+      - academic_data:/app/data
+    restart: unless-stopped
+    # 后端不对外暴露端口，仅通过前端 nginx 代理访问（如需直连调试可取消注释）
+    # ports:
+    #   - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: academic-frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+volumes:
+  academic_data:

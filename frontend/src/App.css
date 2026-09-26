@@ -1,0 +1,922 @@
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.warn-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: #fef3c7;
+  color: var(--warning);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+/* 布局 */
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 侧栏的项目列表标题（创建按钮挪到中间卡片后，这一栏由按钮改为一行标题）。
+   比项目标题（14px/600 深色）更轻，读起来是分区标签而不是列表项 */
+.sidebar-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.project-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.project-item:hover {
+  border-color: var(--primary);
+}
+
+/* 标题与元信息占满剩余宽度，删除按钮才不会被长标题挤走 */
+.project-body {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.project-item .btn {
+  flex-shrink: 0;
+}
+
+.project-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+/* 步骤条 */
+.stepper {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.step {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.15s;
+}
+
+.step.active {
+  opacity: 1;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.step.done {
+  opacity: 1;
+}
+
+/* 还没走到的步骤：光标也要说清楚「点不动」，否则和可点的格子长得一样 */
+.step.locked {
+  cursor: not-allowed;
+}
+
+.step-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.step.done .step-dot {
+  background: var(--success);
+  color: #fff;
+}
+
+.step.active .step-dot {
+  background: var(--primary);
+  color: #fff;
+}
+
+.step-label {
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 表单 */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field-full {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  margin: 20px 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* 选题卡片 */
+.topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.topic-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.topic-card:hover {
+  border-color: var(--primary);
+}
+
+.topic-card.selected {
+  border-color: var(--primary);
+  background: #eff6ff;
+}
+
+.topic-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* 大纲 */
+.budget-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+
+.outline-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chapter-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+.section {
+  margin-left: 20px;
+  margin-bottom: 6px;
+}
+
+.section-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.budget-input {
+  width: 80px;
+}
+
+/* 字数依据：从属于上方的数字，不抢标题层级 */
+.budget-reason {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 2px 0 4px;
+}
+
+/* 资源注入 */
+.guide-box {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 14px;
+  margin: 12px 0;
+}
+
+.guide-box h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.upload-zone {
+  display: block;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  margin: 16px 0;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+
+.upload-zone:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* 放进 .actions 那一行时，上传区要撑满剩余宽度，进度条才紧挨在它右边 */
+.actions .upload-zone {
+  flex: 1;
+  margin: 0;
+  min-width: 240px;
+}
+
+.upload-zone input {
+  display: none;
+}
+
+.doc-list {
+  margin: 16px 0;
+}
+
+.doc-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+/* 文献信息占满剩余宽度，删除按钮才不会被长标题挤走 */
+.doc-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+/* 每篇文献右侧的动作（编辑 / 删除）竖排：两个小按钮横着放会把长标题挤成两行 */
+.doc-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* 小号按钮：删除这类次级操作用，不用抢主按钮的视觉重量 */
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.btn-danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* 研究数据与成果（作者自有材料）。与上面的文献区隔开：它是另一条线，
+   不进引用调度、不进参考文献列表。 */
+.material-panel {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.material-panel h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.material-panel textarea {
+  margin-bottom: 12px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.doc-list h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+/* 设计录入表单：字段是自由文本，需要可纵向拉高 */
+.design-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.design-form textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+/* 同行的小号上传区：不抢「添加这段材料」按钮的位置 */
+.upload-zone-sm {
+  flex: 1;
+  min-width: 240px;
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.material-plan {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plan-item {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--success);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.plan-section {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.plan-item .tag {
+  margin: 0 4px;
+}
+
+.doc-title .tag {
+  margin-left: 8px;
+  font-weight: 400;
+}
+
+/* 引用绑定 */
+.binding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.binding-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.binding-sec-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.binding-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+  /* 让「为什么绑在这里」（.binding-reason）能落到标题下面一整行，而不是跟标题挤在一行 */
+  flex-wrap: wrap;
+}
+
+/* 模型给的一句归属依据（兜底铺开时没有这个字段）。它是只读展示里唯一能说明
+   「为什么这篇绑在这一节」的东西，所以给它放在标题下一行、颜色弱一档。 */
+.binding-reason {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 12px;
+  padding-left: 4px;
+}
+
+.doc-ref {
+  flex: 1;
+}
+
+/* 生成与预览 */
+.loading-hint {
+  margin-top: 12px;
+  color: var(--primary);
+  font-size: 14px;
+}
+
+/* 后台任务的实时进度提示（放在触发按钮的同一行） */
+.working-bar {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.working-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.working-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+/* 不确定进度：耗时不可预知时如实表达「正在动」，而不是编一个百分比出来 */
+.working-fill-unknown {
+  width: 35%;
+  transition: none;
+  animation: working-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes working-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(286%); }
+}
+
+.working-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 核心研究问题：把全篇主线摆在最前面，跑偏一眼就能看见 */
+.core-question {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  background: #eff6ff;
+  border-left: 3px solid var(--primary);
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.core-question strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 生成进度条 */
+.progress-wrap {
+  margin: 16px 0;
+}
+
+.progress-track {
+  height: 10px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.progress-fill-error {
+  background: var(--danger, #dc2626);
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* 生成过程中已完成的章节清单 */
+.done-list {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.done-list h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.done-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 14px;
+}
+
+.done-item:last-child {
+  border-bottom: none;
+}
+
+.done-title {
+  flex: 1;
+}
+
+.section-preview {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preview-header h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.preview-body {
+  margin: 12px 0 0;
+  color: #374151;
+  white-space: pre-wrap;
+}
+
+.error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: var(--danger);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+/* 提示条：操作成功了，但有需要用户知道的后果（如绑定被作废），不是报错 */
+.notice-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: var(--warning);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* 常驻告警条（正文与当前引用编号不一致）。与 notice-banner 同色系，但**故意不给
+   关闭按钮**：notice 是「刚才那次操作的一个后果」，认了就可以收起；这个是一个还在
+   生效的事实 —— 关掉它，用户就重新以为正文与设置是一致的。条件消失（绑定改回原样
+   或重新生成）时它自己就没了，不需要人手动清。左侧粗边是它与 notice 的视觉区分。 */
+.stale-banner {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid var(--warning);
+  color: #92400e;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.ref-list {
+  background: #f9fafb;
+}
+
+.ref-items {
+  margin: 12px 0 0;
+  padding-left: 24px;
+  line-height: 1.8;
+  /* **必须关掉 ol 的默认序号**：每一条的文本本身就以 `[1]` 开头（后端 formatted
+     里带着编号，导出文件里也是它），再叠一层 `<ol>` 的 `1.` 就会印成
+     「1. [1] 张三. 题名[J]. …」—— 屏幕上比成品多一层，同一条参考文献两处长的不一样。 */
+  list-style: none;
+}
+
+.ref-items li {
+  font-size: 13px;
+  color: #374151;
+}
+
+/* 设置模态框 */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 520px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-body .field {
+  gap: 6px;
+}
+
+.config-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-message {
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #f9fafb;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* 主题聚类（文献综述）。与文献列表用同一套视觉词汇，但簇标题是可编辑的输入框，
+   所以要一眼看出「这里能改」—— 用输入框自身的边框即可，不加额外装饰。 */
+.cluster-list {
+  margin: 12px 0;
+}
+
+.cluster-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+/* 就地改名的输入框与聚类标题共用一份声明：同一件事（原地的、紧贴正文样式的输入框） */
+.cluster-title-input,
+.title-input {
+  width: 100%;
+  font-weight: 600;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.cluster-title-input:focus,
+.title-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* 项目名（= 论文标题）的就地改名。文本两行封顶：一段长选题会把侧栏卡片撑得很高，
+   而卡片只是用来挑项目的。 */
+.title-edit {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.title-edit-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  cursor: text;
+}
+
+/* ✎ 常驻但存在感很低（opacity 而非 display:none）：触屏没有 hover，只在 hover
+   时出现的按钮在触屏上等于不存在；而它整屏都在喊「点我」又会盖过正文的视觉重量。
+   用 :focus-visible 也要能看见 —— 键盘用户没有 hover 这个动作。 */
+.title-edit-btn {
+  flex-shrink: 0;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
+  opacity: 0.45;
+  cursor: pointer;
+}
+
+.title-edit-btn:hover,
+.title-edit-btn:focus-visible {
+  opacity: 1;
+  color: var(--primary);
+}
+
+/* 页头是 flex 行：不限宽的话，一段长选题会把右侧的「设置」按钮挤出屏幕 */
+.title-edit-h1 {
+  max-width: min(520px, 45vw);
+  /* 在 h1 里跟着 h1 的字号（输入态时也是），否则改名时字号突然变小 */
+  font-size: inherit;
+}
+
+/* 侧栏卡片里占满整行，与它在文本态下的一行宽度一致 */
+.project-title .title-edit,
+.project-title .title-input {
+  width: 100%;
+}
+
+/* 预览导出页顶部的标题：它就是导出成品的第一行 */
+.export-title {
+  margin: 4px 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}
+
+/* 导出格式下拉（Word / 纯文本 / Markdown）。包裹层只负责定位，按钮本身仍是 .btn */
+.export-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.export-menu .caret {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.export-menu .menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  /* 按钮在 .actions 的 flex 行里，菜单要浮在下面的正文之上 */
+  z-index: 20;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.export-menu .menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+}
+
+.export-menu .menu button:hover {
+  background: #eef2ff;
+  color: var(--primary);
+}
+
+/* 簇的概述较长的，压到次要层级但不截断：它是判断「这一簇合不合理」的依据 */
+.cluster-summary {
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* 渲染出错时的兜底卡片（ErrorBoundary.jsx）。
+   `pre` 不加这两条会横着溢出去：错误栈是最长的一行文本，默认 `pre` 既不换行也不
+   收缩，整页会被撑出一根横向滚动条，而卡片右侧的按钮正好落在屏幕外 —— 用户看到
+   一个报了错、又点不到「重试」的界面。 */
+.error-detail {
+  max-height: 240px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f9fafb;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 「错误详情」折叠标题：次要层级，但一眼看得见能点 */
+.error-boundary summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+}

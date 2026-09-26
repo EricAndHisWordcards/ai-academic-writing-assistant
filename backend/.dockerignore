@@ -1,0 +1,10 @@
+# .dockerignore — 后端
+__pycache__/
+*.pyc
+*.pyo
+.env
+data/
+tests/
+.pytest_cache/
+venv/
+*.db
