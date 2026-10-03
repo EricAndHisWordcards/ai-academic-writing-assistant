@@ -1483,6 +1483,7 @@ def test_upload_cleans_placeholder_metadata(tmp_db, monkeypatch):
     """
     from app.main import app
     from app.routers import projects as projects_router
+    from app.routers import projects_documents as documents_router
 
     async def placeholder_meta(first_text, filename):
         return {
@@ -1490,7 +1491,7 @@ def test_upload_cleans_placeholder_metadata(tmp_db, monkeypatch):
             "source": "未知", "summary": "未提及",
         }
 
-    monkeypatch.setattr(projects_router, "extract_metadata", placeholder_meta)
+    monkeypatch.setattr(documents_router, "extract_metadata", placeholder_meta)
 
     with TestClient(app) as client:
         pid = client.post("/api/projects", json={}).json()["id"]
@@ -1527,6 +1528,7 @@ def test_parse_failure_keeps_already_parsed_documents(tmp_db, monkeypatch):
     """
     from app.main import app
     from app.routers import projects as projects_router
+    from app.routers import projects_documents as documents_router
 
     calls = {"n": 0}
 
@@ -1536,7 +1538,7 @@ def test_parse_failure_keeps_already_parsed_documents(tmp_db, monkeypatch):
             raise RuntimeError("解析服务不可用")
         return {"title": filename, "authors": "", "year": "", "source": "", "summary": ""}
 
-    monkeypatch.setattr(projects_router, "extract_metadata", flaky)
+    monkeypatch.setattr(documents_router, "extract_metadata", flaky)
 
     with TestClient(app) as client:
         pid = client.post("/api/projects", json={}).json()["id"]
@@ -3091,6 +3093,7 @@ def test_citation_schedule_registers_itself_while_it_waits(tmp_db, monkeypatch):
     """
     from app.main import app
     from app.routers import projects as projects_router
+    from app.routers import projects_citations as citations_router
 
     seen: dict = {}
 
@@ -3103,7 +3106,7 @@ def test_citation_schedule_registers_itself_while_it_waits(tmp_db, monkeypatch):
         title = p["outline_json"]["chapters"][0]["sections"][0]["title"]
         return {title: [{"doc_id": docs[0]["id"], "reason": "r"}]}, "relevance"
 
-    monkeypatch.setattr(projects_router, "_build_binding", fake_build)
+    monkeypatch.setattr(citations_router, "_build_binding", fake_build)
 
     with TestClient(app) as client:
         pid = _doc_project(client)
@@ -3140,6 +3143,7 @@ def test_citation_schedule_reports_progress_while_it_waits(tmp_db, monkeypatch):
     from app import db
     from app.main import app
     from app.routers import projects as projects_router
+    from app.routers import projects_citations as citations_router
 
     seen: dict = {}
     real_build = projects_router._build_binding
@@ -3154,7 +3158,7 @@ def test_citation_schedule_reports_progress_while_it_waits(tmp_db, monkeypatch):
 
     pid_holder: dict = {}
 
-    monkeypatch.setattr(projects_router, "_build_binding", fake_build)
+    monkeypatch.setattr(citations_router, "_build_binding", fake_build)
     monkeypatch.setattr(
         projects_router.relevance_agent, "assign_by_relevance", fake_assign
     )
@@ -3232,6 +3236,7 @@ def test_citation_schedule_refuses_to_write_when_outline_changed_midway(tmp_db, 
     from app import db
     from app.main import app
     from app.routers import projects as projects_router
+    from app.routers import projects_citations as citations_router
 
     async def fake_build(p, docs):
         outline = dict(p["outline_json"])
@@ -3239,7 +3244,7 @@ def test_citation_schedule_refuses_to_write_when_outline_changed_midway(tmp_db, 
         db.update_project(p["id"], outline_json=outline)
         return {"任意章节": []}, "uniform"
 
-    monkeypatch.setattr(projects_router, "_build_binding", fake_build)
+    monkeypatch.setattr(citations_router, "_build_binding", fake_build)
 
     with TestClient(app) as client:
         pid = _doc_project(client)
@@ -3273,11 +3278,12 @@ def test_citation_schedule_failure_does_not_leave_a_running_bar(tmp_db, monkeypa
     """
     from app.main import app
     from app.routers import projects as projects_router
+    from app.routers import projects_citations as citations_router
 
     async def boom(p, docs):
         raise RuntimeError("模型连接被重置")
 
-    monkeypatch.setattr(projects_router, "_build_binding", boom)
+    monkeypatch.setattr(citations_router, "_build_binding", boom)
 
     with TestClient(app) as client:
         pid = _doc_project(client)
@@ -4759,6 +4765,7 @@ def test_partial_page_failure_is_reported(tmp_db, monkeypatch):
     """
     import app.routers.projects as projects_router
     from app.main import app
+    from app.routers import projects_documents as documents_router
 
     def fake_extract(_data):
         return [
@@ -4767,7 +4774,7 @@ def test_partial_page_failure_is_reported(tmp_db, monkeypatch):
             {"page": 3, "text": "第三页", "failed": False},
         ]
 
-    monkeypatch.setattr(projects_router, "extract_pdf_text", fake_extract)
+    monkeypatch.setattr(documents_router, "extract_pdf_text", fake_extract)
 
     with TestClient(app) as client:
         pid = client.post("/api/projects", json={}).json()["id"]
@@ -4822,9 +4829,10 @@ def test_all_pages_failing_says_so_instead_of_blaming_the_scan(tmp_db, monkeypat
     """
     import app.routers.projects as projects_router
     from app.main import app
+    from app.routers import projects_documents as documents_router
 
     monkeypatch.setattr(
-        projects_router, "extract_pdf_text",
+        documents_router, "extract_pdf_text",
         lambda _d: [{"page": 1, "text": "", "failed": True},
                     {"page": 2, "text": "", "failed": True}],
     )
@@ -4845,9 +4853,10 @@ def test_blank_scan_still_says_scanned(tmp_db, monkeypatch):
     """一页都没文本、也没有一页报错 ⇒ 扫描版（既有文案，不许被上面那条改掉）。"""
     import app.routers.projects as projects_router
     from app.main import app
+    from app.routers import projects_documents as documents_router
 
     monkeypatch.setattr(
-        projects_router, "extract_pdf_text",
+        documents_router, "extract_pdf_text",
         lambda _d: [{"page": 1, "text": "", "failed": False}],
     )
 

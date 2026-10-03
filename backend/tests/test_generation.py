@@ -9,6 +9,7 @@ import pytest
 
 from app import db
 from app.routers import projects as projects_router
+from app.routers import projects_generation as generation_router
 
 
 # ---------------------------------------------------------------
@@ -110,7 +111,7 @@ def offline(monkeypatch):
     async def _identity(text: str, writing_lang: str = "zh") -> str:
         return text
 
-    monkeypatch.setattr(projects_router, "polish", _identity)
+    monkeypatch.setattr(generation_router, "polish", _identity)
     return generate_agent
 
 
@@ -146,7 +147,7 @@ def test_placeholder_section_is_not_polished(tmp_db, offline, monkeypatch):
         return {**base, "content": f"{section_title} 的正文"}
 
     monkeypatch.setattr(offline, "generate_section", _gen)
-    monkeypatch.setattr(projects_router, "polish", _spy)
+    monkeypatch.setattr(generation_router, "polish", _spy)
 
     _run(pid)
 
@@ -453,7 +454,7 @@ def test_section_timeout_marks_failure_with_a_readable_reason(tmp_db, offline, m
     已完成章节都已逐节落盘，失败后应退回可重试状态并留一句可读的原因。
     """
     pid = _project()
-    monkeypatch.setattr(projects_router, "_SECTION_TIMEOUT", 0.001)
+    monkeypatch.setattr(generation_router, "_SECTION_TIMEOUT", 0.001)
 
     async def _stall(section_title, word_budget, refs, context, topic, **_ignored):
         await asyncio.sleep(1)
@@ -522,7 +523,7 @@ def test_writing_lang_reaches_the_generator_and_polish(tmp_db, offline, monkeypa
         seen_polish.append(writing_lang)
         return text
 
-    monkeypatch.setattr(projects_router, "polish", _spy)
+    monkeypatch.setattr(generation_router, "polish", _spy)
 
     _run(pid)
 

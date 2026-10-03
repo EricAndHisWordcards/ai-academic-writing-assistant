@@ -511,7 +511,10 @@ grep -rn "Windows：" frontend/tests/stop-backend.test.mjs
 #     顺序是 schema 约束**：`<w:i/>` 必须插在 `<w:b/>` 之后、`<w:sz` 之前，不能追加到末尾。md 与 txt
 #     **完全不读**这个字段（纯文本里斜体没有意义），那条断言是"这个字段对它们不存在"、不是"它们碰巧没用到"
 grep -rn "def reference_runs\|def _parts\|def _flatten" backend/app/citation_format.py
-grep -rn "_with_reference_runs" backend/app/routers/projects.py
+grep -rn "_with_reference_runs" backend/app/routers
+#     （实现唯一在 projects_citations.py；两个挂载点分别是 projects.py 门面的 GET 详情
+#      与 projects_generation.py 的进度接口。2026-10-03 projects.py 拆分为五个域模块后
+#      命令从单文件改为扫目录 —— 单文件路径会让命令静默失效。）
 grep -rn "def test_apa_italic_span_is_the_journal_name_and_volume\|def test_mla_italicizes_the_container_only\|def test_gb7714_never_italicizes\|def test_corpus_output_is_byte_identical\|def test_reference_runs_are_served_on_both_bodies_and_pair_with_the_string" backend/tests
 
 # 29b) 斜体的另一半在前端：**每一处 setReferences 都必须配一次 setReferenceRuns**（三处注入 + 作废正文

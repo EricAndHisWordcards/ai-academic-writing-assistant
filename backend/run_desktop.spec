@@ -18,6 +18,13 @@ a = Analysis(
         # openai / pypdf 等依赖不会被打进 exe（运行时报 ModuleNotFoundError）。
         'app.main',
         'app.routers.projects',
+        # D-34 拆分后的域模块：由 projects 静态导入，理论上会被分析跟进，
+        # 显式声明是按「路由模块全部列入 hiddenimports」的惯例上保险。
+        'app.routers.projects_common',
+        'app.routers.projects_outline',
+        'app.routers.projects_documents',
+        'app.routers.projects_citations',
+        'app.routers.projects_generation',
         'app.routers.config',
         'app.agents.topic_agent',
         'app.agents.outline_agent',
