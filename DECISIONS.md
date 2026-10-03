@@ -292,6 +292,12 @@
 - **验证**：node 行为冒烟（失败退避、恢复撤回、终态停止、清理）；`node --test` 39/39；两个文本测试 52 条全绿；pytest 1041 全绿（与 D-34 同一轮跑的）。
 - **改写前出处**：frontend/src/App.jsx（两段 effect）、frontend/src/helpers.js（无 import 的 94 行版）
 
+### D-36 · Release 资产名由 GitHub 标准化为 URL 安全字符；发布载荷用无 BOM UTF-8
+
+- **现场**：v1.33 上传 `AI学术写作辅助系统-1.0.0-win.zip`，API 成功（HTTP 200）但资产名落为 `AI.-1.0.0-win.zip`。发送字节逐字节核实是合法 UTF-8，PATCH 改名（同样 200）后中文字段仍被替换——**替换发生在 GitHub 侧**：资产名用于下载 URL 路径，凡不在 `[A-Za-z0-9-_.]` 内的连续字符（空格同理）被折叠为一个点。
+- **处置**：资产统一用 ASCII 名 `AI-Academic-Writing-Assistant-1.0.0-win.zip`（与 v1.31 一致），中文产品名只出现在 Release 说明正文，不进资产名。
+- **同轮另一个坑**：PowerShell 5.1 的 `Set-Content -Encoding UTF8` 写 UTF-8 **带 BOM**，curl 原样发出 → GitHub 报 `Problems parsing JSON`。改用 `[IO.File]::WriteAllText(path, json, [Text.UTF8Encoding]::new($false))` 写无 BOM 文件。
+
 ---
 
 ## 交付包沿革
@@ -303,7 +309,7 @@
 | `release6` | 已交付 | v1.29 期，127,390,397 字节 |
 | `release7` | 已交付（**已落后**） | 2026-09-24 04:04 烘；127,391,559 字节；sha256 `89e74fcf461587077e1bc1594ba3e98f50c854b1665b5a3f1af4e39319599701`。**不含 D-30 的 WAL 修复**（烘的时候后端还没改），已被 `release8` 取代，但按规则原封不动 |
 | **`release8`（已发布）** | 已交付 | 2026-09-27 00:12 烘；127,885,710 字节；sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`；后端 exe 19,882,302 字节；对应 tag `v1.31` |
-| **`release9`（已烘，未发布）** | 本地已烘 | 2026-10-03 22:51 烘；127,661,665 字节；sha256 `68209194AAF68F6C2C40B16F0007C6E99E6F53CE292381712385AB7A67A2BF8C`；后端 exe 19,656,206 字节；前端 bundle `index-CINfOPiD.js` 224,158 字节。触发判据①（D-34 动了 `backend/app/`）。烘前清掉了 `app/routers/__pycache__/` 里改名残留的 `_projects_common.cpython-312.pyc`（datas 整棵打包会把它带进 exe）。验证：exe 字节扫描含新模块、真跑起来 `/api/meta` 回 200、上传四层自检 466 个产物成员零命中 |
+| **`release9`（已发布）** | 已发布 | 2026-10-03 22:51 烘，**2026-10-04 发布，tag `v1.33`**；127,661,665 字节；sha256 `68209194AAF68F6C2C40B16F0007C6E99E6F53CE292381712385AB7A67A2BF8C`；后端 exe 19,656,206 字节；前端 bundle `index-CINfOPiD.js` 224,158 字节。资产名按 GitHub 规则用 ASCII（`AI-Academic-Writing-Assistant-1.0.0-win.zip`，见 D-36）。触发判据①（D-34 动了 `backend/app/`）。烘前清掉了 `app/routers/__pycache__/` 里改名残留的 `_projects_common.cpython-312.pyc`（datas 整棵打包会把它带进 exe）。验证：exe 字节扫描含新模块、真跑起来 `/api/meta` 回 200、上传四层自检 466 个产物成员零命中、发布后 CDN 206 可达 |
 
 > **为什么要出 `release8`**：`release7` 烘于 2026-09-24 04:04，而 D-30 的
 > `DATABASE_WAL` 开关是 2026-09-26 22:42–22:43 才改的（`db.py` / `config.py`）。
