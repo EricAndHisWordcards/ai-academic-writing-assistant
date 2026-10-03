@@ -5,6 +5,23 @@
 // 读到契约（比如 wordsNumber 为什么必须是 Number 而不是 parseInt）。
 //
 // 一概不 import React —— 这也让它们随时可以用 node 直接跑起来验证。
+//
+// 但**必须 import constants.js**：下面用到的几张兜底表此前是裸引用 —— v1.32 拆分时
+// 漏了这行 import，生产 bundle 里靠 Rollup 把所有模块拼进同一个作用域才碰巧解析得到；
+// dev 模式与 node 直接 import 都会在走到兜底分支时 ReferenceError（configFor 的
+// 兜底、buildSteps 的 design 标签、isMissingMeta 的占位词表）。显式 import 之后，
+// 上一句「可以用 node 直接跑起来验证」才重新成立。
+import {
+  MISSING_META_VALUES,
+  SOURCE_TYPE_LETTERS,
+  FALLBACK_TYPE_CONFIG,
+  DEFAULT_TYPE_KEY,
+  STEP_LABELS,
+  STATUS_ANCHOR,
+  ADVANCE_AFTER,
+  TASK_POLL_MS,
+  TASK_POLL_MAX_MS,
+} from './constants.js'
 
 // 「目标总字数」框里那串字符 → 数字。空串、'0'、敲了一半的 '-' 都归一到 0：
 // 库里没有「空」这个表示（同 writing_ideas 的空串落 NULL），0 就是「还没填」。
@@ -91,4 +108,66 @@ export function materialsAnalyzing(task) {
 // 的时候计划当然是空的，那不是「没分析」，那是「正在算」。
 export function materialsPendingOf({ isReview, materials, materialsPlan, task }) {
   return !isReview && materials.length > 0 && !materialsPlan && !materialsAnalyzing(task)
+}
+
+// 两段轮询（App.jsx 的生成进度与通用任务）共用的脚手架。此前这套「alive / timer /
+// fails / pollErr + 指数退避 + 只撤自己那条错误」的骨架在两个 effect 里各写一遍，
+// 只有取数与终态处理不同 —— 骨架最难写对（清理、退避、错误归属），却最不值得写两遍。
+//
+// 契约：
+// - request()：取一次进度；抛错视为一次失败。
+// - handle(res)：消费一次成功的结果，返回 true 表示终态（停止轮询）、false 继续。
+//   handle 里可以 await（interrupted 恢复、终态拉项目都要再请求）；安排下一次轮询
+//   前会重新检查存活，清理函数随时可安全调用。
+// - failMessage(fails, message)：把连续失败次数与错误信息拼成给用户看的那句话。
+//   两处文案本来就不同（「生成仍在后台继续」vs「任务仍在后台运行」），所以它是
+//   参数而不是写死在这里。
+//
+// 失败处理是这套脚手架的灵魂，两条规则缺一不可：
+// - **任何一次失败都不结束轮询**，只是下一次来得更晚（指数退避，封顶 maxMs）。
+//   原先通用任务一侧在这里写完 setError 就直接掉出 tick —— 一次网络抖动、一次后端
+//   重启，进度轮询就永久消失了：进度条停在原地、按钮一直禁用、也再没有第二次请求
+//   去发现服务已经回来。刷新页面是用户唯一的自救手段，而刷新恰好会丢掉刚问出的那些
+//   状态。正文生成尤其不能这样：它动辄几分钟，中途一次断连若终止轮询，用户看到的
+//   是一个永远停在某个百分比的进度条，而正文其实还在后台一节一节地写。
+// - 恢复时要**只撤自己写进 error 的那一条**：用字符串比对而不是清空全部，因为轮询
+//   失败期间用户完全可能在别处触发另一条报错（比如点了某个按钮被后端 409 拒绝），
+//   那条不该被轮询的恢复顺手抹掉。连败次数也写进提示语 —— 用户看到「已连续 3 次」
+//   才知道这是网络/服务的问题而不是自己点错了什么。
+export function startPolling({ request, handle, failMessage, setError, intervalMs = TASK_POLL_MS, maxMs = TASK_POLL_MAX_MS }) {
+  let alive = true
+  let timer = null
+  let fails = 0
+  let pollErr = ''
+
+  async function tick() {
+    if (!alive) return
+    let res
+    try {
+      res = await request()
+      if (!alive) return
+    } catch (e) {
+      if (!alive) return
+      fails += 1
+      pollErr = failMessage(fails, e.message)
+      setError(pollErr)
+      timer = setTimeout(tick, Math.min(intervalMs * 2 ** fails, maxMs))
+      return
+    }
+    if (pollErr) {
+      const mine = pollErr
+      pollErr = ''
+      setError((prev) => (prev === mine ? '' : prev))
+    }
+    fails = 0
+    const done = await handle(res)
+    if (done || !alive) return
+    timer = setTimeout(tick, intervalMs)
+  }
+
+  tick()
+  return () => {
+    alive = false
+    if (timer) clearTimeout(timer)
+  }
 }

@@ -100,8 +100,6 @@ import {
   DOC_EDIT_FIELDS,
   FALLBACK_TYPE_CONFIG,
   POLLED_TASK_KINDS,
-  TASK_POLL_MS,
-  TASK_POLL_MAX_MS,
   STATUS_ANCHOR,
   STEP_DONE_STATUSES,
 } from './constants'
@@ -116,6 +114,7 @@ import {
   statusToStepKey,
   materialsAnalyzing,
   materialsPendingOf,
+  startPolling,
 } from './helpers'
 
 export default function App() {
@@ -318,40 +317,21 @@ export default function App() {
 
   // 生成进度轮询。条件是「项目正在生成」而非「本地点了按钮」——这样刷新页面后
   // statusToStepKey 把人送回生成步，effect 自动重新起轮询，进度不丢。
+  // 退避、「只撤自己那条错误」、失败不停轮的骨架在 helpers.startPolling ——
+  // 这里只剩取数与终态处理。
   useEffect(() => {
     if (!project || project.status !== 'generating') return
-    let alive = true
-    let timer = null
-    // 与下面的通用任务轮询同一套退避与「只撤自己那条错误」的处理（见那边的注释）。
-    // 这里尤其不能失败即停：正文生成动辄几分钟，中途一次断连若终止轮询，用户看到的是
-    // 一个永远停在某个百分比的进度条，而正文其实还在后台一节一节地写。
-    let fails = 0
-    let pollErr = ''
-
-    async function tick() {
-      if (!alive) return
-      let res
-      try {
-        res = await api.generateProgress(project.id)
-        if (!alive) return
-      } catch (e) {
-        if (!alive) return
-        fails += 1
-        pollErr = `生成进度查询失败（已连续 ${fails} 次）：${e.message}。生成仍在后台继续，恢复连接后进度会自动接上。`
-        setError(pollErr)
-        timer = setTimeout(tick, Math.min(TASK_POLL_MS * 2 ** fails, TASK_POLL_MAX_MS))
-        return
-      }
-      if (pollErr) {
-        const mine = pollErr
-        pollErr = ''
-        setError((prev) => (prev === mine ? '' : prev))
-      }
-      fails = 0
-      setProgress(res)
-      if (res.status === 'running') {
-        setGenerating(true)
-      } else {
+    return startPolling({
+      request: () => api.generateProgress(project.id),
+      failMessage: (n, m) =>
+        `生成进度查询失败（已连续 ${n} 次）：${m}。生成仍在后台继续，恢复连接后进度会自动接上。`,
+      setError,
+      handle: async (res) => {
+        setProgress(res)
+        if (res.status === 'running') {
+          setGenerating(true)
+          return false
+        }
         setGenerating(false)
         if (res.status === 'error') {
           setError(res.error || '生成失败')
@@ -368,7 +348,7 @@ export default function App() {
             setReferences(p.references_json)
             setReferenceRuns(p.referenceRuns || null)
           } catch {}
-          return
+          return true
         } else {
           setSections(res.sections || null)
           setReferences(res.references || null)
@@ -378,74 +358,33 @@ export default function App() {
         try {
           setProject(await api.getProject(project.id))
         } catch {}
-        return
-      }
-      timer = setTimeout(tick, TASK_POLL_MS)
-    }
-
-    tick()
-    return () => {
-      alive = false
-      if (timer) clearTimeout(timer)
-    }
+        return true
+      },
+    })
     // 依赖 id 与 status 而非整个 project 对象：终态里会 setProject 换掉对象引用，
     // 若依赖对象本身，effect 会重挂载并无限重启轮询。
   }, [project?.id, project?.status])
 
-  // 通用后台任务的轮询。与上面的生成进度同一套思路：条件是「项目上真的有任务在跑」
-  // 而非「本地点了按钮」—— 刷新页面后 loadProject 从 task_state_json 种入初值，
-  // effect 自动重新起轮询，几十秒的等待不会因为刷新而失去反馈。
+  // 通用后台任务的轮询。与生成进度轮询共用同一套骨架（helpers.startPolling）：
+  // 条件是「项目上真的有任务在跑」而非「本地点了按钮」—— 刷新页面后 loadProject
+  // 从 task_state_json 种入初值，effect 自动重新起轮询，几十秒的等待不会因为刷新
+  // 而失去反馈。
   useEffect(() => {
     if (!project || task?.status !== 'running') return
     if (!POLLED_TASK_KINDS.has(task.kind)) return
-    let alive = true
-    let timer = null
-    // 连续失败次数。既用来算退避，也写进提示语 —— 用户看到「已连续 3 次」才知道
-    // 这是网络/服务的问题而不是自己点错了什么。
-    let fails = 0
-    // 本 effect 自己写进 error 的那一条。恢复时要**只撤这一条**：用字符串比对而不是
-    // 清空全部，因为轮询失败期间用户完全可能在别处触发另一条报错（比如点了某个按钮
-    // 被后端 409 拒绝），那条不该被轮询的恢复顺手抹掉。
-    let pollErr = ''
-
-    async function tick() {
-      if (!alive) return
-      let next
-      try {
-        const res = await api.taskProgress(project.id)
-        if (!alive) return
-        next = res.task || { status: 'idle' }
-      } catch (e) {
-        if (!alive) return
-        fails += 1
-        pollErr = `进度查询失败（已连续 ${fails} 次）：${e.message}。任务仍在后台运行，恢复连接后进度会自动接上。`
-        setError(pollErr)
-        // **任何一次失败都不结束轮询**，只是下一次来得更晚。原先这里写完 setError 就
-        // 直接掉出 tick —— 一次网络抖动、一次后端重启，进度轮询就永久消失了：进度条
-        // 停在原地、按钮一直禁用、也再没有第二次请求去发现服务已经回来。刷新页面是
-        // 用户唯一的自救手段，而刷新恰好会丢掉刚问出的那些状态。
-        timer = setTimeout(tick, Math.min(TASK_POLL_MS * 2 ** fails, TASK_POLL_MAX_MS))
-        return
-      }
-      if (pollErr) {
-        const mine = pollErr
-        pollErr = ''
-        setError((prev) => (prev === mine ? '' : prev))
-      }
-      fails = 0
-      setTask(next)
-      if (next.status === 'running') {
-        timer = setTimeout(tick, TASK_POLL_MS)
-        return
-      }
-      await finishTask(next)
-    }
-
-    tick()
-    return () => {
-      alive = false
-      if (timer) clearTimeout(timer)
-    }
+    return startPolling({
+      request: () => api.taskProgress(project.id),
+      failMessage: (n, m) =>
+        `进度查询失败（已连续 ${n} 次）：${m}。任务仍在后台运行，恢复连接后进度会自动接上。`,
+      setError,
+      handle: async (res) => {
+        const next = res.task || { status: 'idle' }
+        setTask(next)
+        if (next.status === 'running') return false
+        await finishTask(next)
+        return true
+      },
+    })
     // 与生成轮询同理：依赖 id / status / kind 而非 task 对象本身，否则每次
     // setTask 换掉对象引用都会重挂载 effect，轮询永远重启。
   }, [project?.id, task?.status, task?.kind])
