@@ -59,6 +59,12 @@ _*.ps1
 .claude/
 # WorkBuddy 项目记忆（个人工作日志，勿入库）
 .workbuddy/
+# Trae / Claude Code 的项目记忆，与 .workbuddy/ 是同一批个人工作记忆的不同粒度。
+# Trae 靠根目录 CLAUDE.md 读项目规则（它 settings.json 里 AI.rules.importClaudeMd=true），
+# .trae/ 是它的原生规则目录。二者待遇与 .workbuddy/ 一致：只在本地，不上传。
+# 内容里含本机账户名与内部工作口径 —— 正是这个仓库一贯不许进公开仓库的那类东西。
+CLAUDE.md
+.trae/
 
 # ===== 系统 =====
 .DS_Store
