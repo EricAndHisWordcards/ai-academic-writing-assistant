@@ -268,6 +268,32 @@
 
 ---
 
+### D-34 · `routers/projects.py` 按业务域拆成五个模块，`projects.py` 留作门面
+
+- **此前**：`backend/app/routers/projects.py` 单文件 **3,263 行**（41 个路由 + 约 60 个辅助函数），后端最大的文件。
+- **现在**：共享层 `projects_common.py`（444 行：请求模型、常量、`_GEN_TASKS`、忙闲登记、键函数族、跨域判据）+ 四个域模块 `projects_outline.py`（458）/ `projects_documents.py`（862）/ `projects_citations.py`（928）/ `projects_generation.py`（507），各持裸 `APIRouter()`；`projects.py` 留作**门面**（301 行：CRUD + 选题路由 + `include_router` 聚合 + 重导出测试依赖的全部名字）。
+- **为什么**：与 D-33 同一条思路，边界取业务域而不是行数；**两个及以上域共用的判据只留一份**（进共享层），只被单域用的留在那个域。依赖单向无环：common ← outline/documents/citations ← generation。
+- **硬约束不变**：`_GEN_TASKS` 仍是**全仓唯一的 dict 对象**（定义于 `projects_common.py:199`，各域与门面一律 `from .projects_common import` 拿同一对象，无人整体重赋值）——后端单进程的根据没动。
+- **两个现场发现，都是不改就会咬人的**：
+  1. **文件名不能带前导下划线**：最初叫 `_projects_common.py`，`.gitignore` 的 `_*.py` 规则（D-32 那一族）把它**静默挡在仓库外**——文件在磁盘上、测试全绿，`git status` 却看不见它，fresh clone 直接缺文件。改叫 `projects_common.py`，命名缘由写在文件 docstring 里。
+  2. **FastAPI 0.115.6 的 `include_router` 会叠加宿主 router 自身的 prefix 与 tags**（实测 `/api` + 域模块再带 `/api` → `/api/api/x`、tags 重复）——单文件结构下不存在这个行为。域模块因此一律裸 `APIRouter()`，prefix/tags 由门面统一提供。
+- **测试改动仅一处性质**：monkeypatch 的**目标模块**随函数搬家（16 处）——`extract_metadata`×2、`extract_pdf_text`×3 → `projects_documents`；`_build_binding`×4 → `projects_citations`；`polish`×3、`_SECTION_TIMEOUT`×1 → `projects_generation`。断言与逻辑零改动。
+- **文档同步**：`ARCHITECTURE.md` §八 里 grep `routers/projects.py` 单文件的命令改为扫 `routers/` 目录（搬走后会静默 0 命中，见 D-33 同款教训）。
+- **验证**：31 条 (方法, 路径) 与拆分前**逐条一致**、tags 全 `['projects']`、`app` 总路由 39 = 基线；`projects._GEN_TASKS is projects_common._GEN_TASKS` = True；门面 15 个测试依赖属性逐一在场；pytest **1041 通过 / 0 失败 / 0 错误 / 0 跳过**。
+- **改写前出处**：backend/app/routers/projects.py（3,263 行）
+
+### D-35 · 前端轮询骨架抽成 `startPolling`；顺带修掉 helpers.js 的裸引用
+
+- **此前**：`App.jsx` 两段轮询 effect（生成进度 / 通用任务）各自写一遍「alive / timer / fails / pollErr + 指数退避 + 只撤自己那条错误」的骨架，约 25 行逐字重复；只有取数与终态处理不同。
+- **现在**：骨架抽成 `helpers.js` 的 `startPolling({ request, handle, failMessage, setError })`，返回清理函数；两处 effect 只剩取数与终态处理。文案两处本就不同，所以 `failMessage` 是参数不是写死。
+- **为什么**：骨架最难写对（清理、退避、错误归属）却最不值得写两遍。「失败不停轮」「只撤自己那条错误」的理由整段随骨架搬进 helpers，一处注释管两个消费点。
+- **顺带修掉一个真 bug**：`helpers.js` 用到 constants.js 的 7 张表（`MISSING_META_VALUES` / `SOURCE_TYPE_LETTERS` / `FALLBACK_TYPE_CONFIG` / `DEFAULT_TYPE_KEY` / `STEP_LABELS` / `STATUS_ANCHOR` / `ADVANCE_AFTER`）**全是裸引用**——v1.32 拆分时漏了 import。生产 bundle 靠 Rollup 把所有模块拼进同一作用域才**碰巧**解析得到；dev 模式与 node 直接 import 会在兜底分支 `ReferenceError`（`configFor` 的兜底、`buildSteps` 的 design 标签都在这条路径上）。已补显式 `import … from './constants.js'`（**带扩展名**——node ESM 不解析无扩展名导入），D-33「可以用 node 直接跑起来验证」的声明由此重新成立。
+- **刻意保持**：`interrupted` 分支的 if/else-if/else 文本形态不变（`test_frontend_conventions` 的切片断言靠它定位）；`POLLED_TASK_KINDS.has(` 在 App.jsx 恰好两处的计数不变；退避节奏、错误文案一字未改。
+- **验证**：node 行为冒烟（失败退避、恢复撤回、终态停止、清理）；`node --test` 39/39；两个文本测试 52 条全绿；pytest 1041 全绿（与 D-34 同一轮跑的）。
+- **改写前出处**：frontend/src/App.jsx（两段 effect）、frontend/src/helpers.js（无 import 的 94 行版）
+
+---
+
 ## 交付包沿革
 
 | 包 | 状态 | 说明 |
@@ -276,7 +302,8 @@
 | `release5` | 已交付 | 2026-09-23 17:50 烘，v1.28 期 |
 | `release6` | 已交付 | v1.29 期，127,390,397 字节 |
 | `release7` | 已交付（**已落后**） | 2026-09-24 04:04 烘；127,391,559 字节；sha256 `89e74fcf461587077e1bc1594ba3e98f50c854b1665b5a3f1af4e39319599701`。**不含 D-30 的 WAL 修复**（烘的时候后端还没改），已被 `release8` 取代，但按规则原封不动 |
-| **`release8`（当前）** | **当前交付物** | 2026-09-27 00:12 烘；127,885,710 字节；sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`；后端 exe 19,882,302 字节 |
+| **`release8`（已发布）** | 已交付 | 2026-09-27 00:12 烘；127,885,710 字节；sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`；后端 exe 19,882,302 字节；对应 tag `v1.31` |
+| **`release9`（已烘，未发布）** | 本地已烘 | 2026-10-03 22:51 烘；127,661,665 字节；sha256 `68209194AAF68F6C2C40B16F0007C6E99E6F53CE292381712385AB7A67A2BF8C`；后端 exe 19,656,206 字节；前端 bundle `index-CINfOPiD.js` 224,158 字节。触发判据①（D-34 动了 `backend/app/`）。烘前清掉了 `app/routers/__pycache__/` 里改名残留的 `_projects_common.cpython-312.pyc`（datas 整棵打包会把它带进 exe）。验证：exe 字节扫描含新模块、真跑起来 `/api/meta` 回 200、上传四层自检 466 个产物成员零命中 |
 
 > **为什么要出 `release8`**：`release7` 烘于 2026-09-24 04:04，而 D-30 的
 > `DATABASE_WAL` 开关是 2026-09-26 22:42–22:43 才改的（`db.py` / `config.py`）。
