@@ -69,3 +69,5 @@ CLAUDE.md
 # ===== 系统 =====
 .DS_Store
 Thumbs.db
+# 日志文件（调试器或系统组件可能在根目录写 debug.log 之类）
+*.log
