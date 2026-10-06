@@ -78,7 +78,8 @@
 │   │   ├── tasks.py         # 后台任务登记（大纲 / 文献解析 / 材料分析 / 聚类 / 设计提炼 / 引用调度）
 │   │   ├── paper_types.py   # 七类论文类型的工序表（TYPE_CONFIG）与大纲骨架（单一事实来源）
 │   │   ├── pdf_parser.py    # PDF 解析 + 页码索引
-│   │   ├── material_parser.py      # 作者材料文本提取（PDF/docx/xlsx/文本）
+│   │   ├── caj_support.py   # 知网 CAJ/KDH → PDF（透传/剥离重建/XOR 解密，零新增依赖）
+│   │   ├── material_parser.py      # 作者材料文本提取（PDF/CAJ/docx/xlsx/文本）
 │   │   ├── citation_format.py      # 角标样式与参考文献格式（GB/T 7714-2015、APA、MLA）+「哪种语言能选哪些」的唯一判据
 │   │   ├── writing_lang.py  # 写作语言（zh / en）：未知值收敛、字数单位、输出上限、给模型的输出语言宣告
 │   │   ├── names.py         # 著者姓名规范化（GB/T 姓全大写、APA 倒装缩写、MLA 全名、等 / et al.）
@@ -95,9 +96,14 @@
 │   │   │   ├── generate_agent.py   # 分段生成 + 字数校准 Agent
 │   │   │   └── polish_agent.py     # 学术润色 Agent
 │   │   └── routers/
-│   │       ├── projects.py         # 项目主路由（全部业务入口）
-│   │       └── config.py           # 配置路由（Key 查看 / 更新）
-│   ├── tests/               # pytest（1041 个用例，默认离线运行）
+│   │       ├── projects.py           # 门面（include 五个业务域路由）
+│   │       ├── projects_common.py    # 共享层（忙闲闸、pydantic 模型、公共判据）
+│   │       ├── projects_outline.py   # 选题与大纲域
+│   │       ├── projects_documents.py # 文献与材料域（含 CAJ 转换入口）
+│   │       ├── projects_citations.py # 引用调度域
+│   │       ├── projects_generation.py# 正文生成域
+│   │       └── config.py             # 配置路由（Key 查看 / 更新）
+│   ├── tests/               # pytest（1056 个用例，默认离线运行）
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/                # Vite + React 前端
@@ -127,7 +133,7 @@ cd backend
 venv/Scripts/python -m pytest -q
 ```
 
-测试默认离线（不调用 LLM），需要真实模型的用例会显式打桩（当前 1041 个用例）。
+测试默认离线（不调用 LLM），需要真实模型的用例会显式打桩（当前 1056 个用例）。
 
 前端四个纯 JS 模块（`exporters.js` / `api.js` / `electron/wait-for-backend.cjs` /
 `electron/stop-backend.cjs`）另有 39 个 `node --test` 行为用例（Node 24 内置测试运行器，
@@ -148,9 +154,9 @@ node --test tests/exporters.test.mjs tests/api.test.mjs \
 | | |
 | --- | --- |
 | **下载** | [**Releases**](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/releases/latest) 页面里的 `AI-Academic-Writing-Assistant-1.0.0-win.zip` |
-| **版本** | [v1.31](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/releases/tag/v1.31) |
-| **体积** | 122 MB（127,885,710 字节） |
-| **SHA256** | `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67` |
+| **版本** | [v1.34](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/releases/tag/v1.34) |
+| **体积** | 122 MB（127,426,746 字节） |
+| **SHA256** | `48225b6bc3d836d19008d7b19a6e014b13f4fc3ef6e97ff421a4ca601347dfd3` |
 | **平台** | Windows x64（目前只有这一个平台的构建） |
 
 解压 → 双击 `AI学术写作辅助系统.exe` → 完事。**不需要安装任何东西**：Python 运行时、FastAPI、Chromium 都打在里面了。启动后后端跑在 `127.0.0.1:8000`，数据库落在 `~/.academic_writer/app.db`。
@@ -209,7 +215,7 @@ npm install && npm run dev
 
 ```
 [人工确认点①] ← 大纲生成与字数分配
-   ├── 轨一：文献下载指南 → 上传解析 PDF → 全局引用调度 → [人工确认点②] ─┐
+   ├── 轨一：文献下载指南 → 上传解析 PDF/CAJ → 全局引用调度 → [人工确认点②] ─┐
    └── 轨二：作者自有材料 → 融入分析 ───────────────────────────────────┤
                                                                         └→ 渐进式分段生成 → 预览导出
 ```
@@ -283,8 +289,8 @@ npm install && npm run dev
 
 | | 轨一：文献（`documents` 表） | 轨二：作者自有材料（`materials` 表） |
 | --- | --- | --- |
-| 内容 | 上传的 PDF 文献 | 作者自己的研究思路、数据与成果 |
-| 来源 | 批量上传 PDF | 上传文件（PDF/docx/xlsx/txt/md/csv/json/log）或直接粘贴文本；**研究设计步上传的附件也进这里** |
+| 内容 | 上传的 PDF / 知网 CAJ 文献 | 作者自己的研究思路、数据与成果 |
+| 来源 | 批量上传 PDF（`.pdf`，含知网 `.caj` / `.kdh`，自动转换） | 上传文件（PDF/CAJ/docx/xlsx/txt/md/csv/json/log）或直接粘贴文本；**研究设计步上传的附件也进这里** |
 | 解析 | 后台任务，逐篇调 LLM 提取元数据，逐篇落库；**某一篇的提炼失败只算那一篇**（计入失败清单、继续下一篇），不会被吞成"解析成功、AI 没找到内容" | 纯本地文本提取，毫秒级，同步返回 |
 | 下游 | 引用调度 → 角标 + 参考文献列表 | 融入分析 → 按节注入正文，**不加角标、不进参考文献** |
 | 失败影响 | 单篇失败不影响整批，失败清单可补传；**全部失败不会报成成功**——那是"一篇都没进库却显示解析完成"，用户会以为文献已在库里；**部分页失败单独上报**（`partial`），不阻断入库但也不会被说成完全成功 | 单份失败不影响整批 |

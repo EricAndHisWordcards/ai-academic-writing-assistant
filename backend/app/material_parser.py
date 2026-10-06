@@ -4,7 +4,7 @@
 一整段文本供模型理解，不需要页码，也不需要进引用调度。
 
 支持的格式与实现方式：
-- .pdf                      → pypdf（复用 pdf_parser）
+- .pdf/.caj/.kdh          → 先经 caj_support 归一为 PDF，再 pypdf（复用 pdf_parser）
 - .txt/.md/.csv/.json/.log  → 直接解码（utf-8 → gb18030 → latin-1 逐级回退）
 - .docx                     → docx 本质是个 zip，正文在 word/document.xml
 - .xlsx                     → 同为 zip，字符串在 xl/sharedStrings.xml，单元格在 sheet xml
@@ -31,9 +31,9 @@ MAX_CHARS = 200_000
 # 送入单节生成提示词时，每份材料最多摘录的字符数
 EXCERPT_CHARS = 2000
 
-SUPPORTED_EXTENSIONS = {
-    ".pdf", ".caj", ".kdh", ".txt", ".md", ".markdown", ".csv", ".json", ".log",
-    ".docx", ".xlsx",
+# 知网三扩展名（.pdf/.caj/.kdh）直接复用 caj_support 的单一判据，本处不再另写一份。
+SUPPORTED_EXTENSIONS = caj_support.CAJ_DOC_EXTS | {
+    ".txt", ".md", ".markdown", ".csv", ".json", ".log", ".docx", ".xlsx",
 }
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -55,7 +55,7 @@ def extract_text(filename: str, data: bytes) -> str:
     而不是存一份空材料进库。
     """
     ext = _ext(filename)
-    if ext in (".pdf", ".caj", ".kdh"):
+    if ext in caj_support.CAJ_DOC_EXTS:
         try:
             pdf_bytes = caj_support.unwrap_to_pdf(data)
         except caj_support.UnsupportedCaj as e:

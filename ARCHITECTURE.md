@@ -95,9 +95,10 @@
 | 存储 | SQLite（**原生 `sqlite3`，无 ORM**），单文件 `backend/data/app.db`，3 张表：`projects` / `documents` / `materials` |
 | 并发 | 原生 `asyncio` 后台任务 + 进度落库（无 Celery / Redis）；**必须单进程运行**（任务登记表在进程内，理由见 [`DEPLOY.md`](./DEPLOY.md) §5.3） |
 | PDF 解析 | pypdf 5.1.0，带**逐页索引**以便引用定位 |
+| 知网 CAJ | `caj_support.py` 纯标准库转换：`%PDF` 直头透传、`CAJ` 容器剥离并补 catalog 重建 xref、`KDH` 循环 XOR 解密；扫描/私有头（HN/C8/TEB）明确拒绝。零新增依赖 |
 | 材料解析 | `.docx` / `.xlsx` 用**标准库 `zipfile` + `ElementTree`** 直读 OOXML；`.txt/.md/.csv/.json/.log` 分级编码回退 |
 | 上传与配置 | python-multipart 0.0.20（文件上传）+ python-dotenv 1.0.1（`.env`） |
-| 测试 | pytest 8.3.4 + httpx，**1041 个用例，默认离线**（真实模型调用显式打桩） |
+| 测试 | pytest 8.3.4 + httpx，**1056 个用例，默认离线**（真实模型调用显式打桩） |
 
 ### 前端
 
@@ -113,17 +114,15 @@
 
 Electron 31.7.7 + electron-builder 24.13.3（`asar: false`，`win.target: ["zip"]`）；后端用
 PyInstaller **onefile** 打包（`backend/run_desktop.spec`，`console=False`）→ 约 19 MB 的
-`academic_backend.exe`（v1.31 重打后 19,882,302 字节；此前是约 18.5 MB），作为 `extraResources`
+`academic_backend.exe`（v1.34 重打后 19,419,650 字节），作为 `extraResources`
 落到 `resources/backend/`。当前交付物
-`frontend/release8/AI学术写作辅助系统-1.0.0-win.zip`（127,885,710 字节，2026-09-27 烘，
-sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`），
+`frontend/release10/AI学术写作辅助系统-1.0.0-win.zip`（127,426,746 字节，2026-10-06 烘，
+sha256 `48225B6BC3D836D19008D7B19A6E014B13F4FC3EF6E97FF421A4CA601347DFD3`），
 解压即用（免装 Python / Node）。
 
-> **为什么有 `release8`**：上一份 `release7`（127,391,559 字节，2026-09-24 04:04 烘）
-> **不含 D-30 的 WAL 修复** —— 它烘的时候 `backend/app/db.py` 与 `config.py` 还没改，
-> 而 `datas` 是整棵打包，于是桌面版上"生成的写挡住轮询的读"那个现场一直是坏的。
-> 本轮重打两个半边后已实测修正：起 `release8` 的 exe 后 `~/.academic_writer/app.db`
-> 的 `journal_mode` 由 `delete` 变为 `wal`（源码态的库路径与打包态不同，这条此前从未被覆盖）。
+> **历代包沿革**：`release8`（v1.31）首次带 D-30 的 WAL 修复；`release9`（v1.33）含
+> D-34/D-35；`release10`（v1.34）起支持直接上传知网 CAJ/KDH（D-37）。已交付的包一个字节
+> 不动，完整沿革与每个包的校验和见 [`DECISIONS.md`](./DECISIONS.md) 的「交付包沿革」。
 
 **输出目录随版本递增，已交付的包一个字节都不要动**——同名重建会覆盖那份说了「不动了」的 zip
 （打包指南坑 3 就是这条）。哈希只说明"包里那份 == 我刚构建的那份"、**不说明"构建出来的跑的是
@@ -169,6 +168,7 @@ sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`），
 │   │   ├── tasks.py            # 后台任务登记（同 key 互斥）
 │   │   ├── paper_types.py      # 七类论文类型的工序表与大纲骨架（单一事实来源）
 │   │   ├── pdf_parser.py       # PDF 逐页文本提取（坏页留空 + 点名，不抛）
+│   │   ├── caj_support.py      # 知网 CAJ/KDH → PDF（透传/剥离重建/XOR 解密；单一扩展名判据）
 │   │   ├── material_parser.py  # 作者材料文本提取（无第三方依赖）
 │   │   ├── citation_format.py  # 参考文献格式（GB/T 7714-2015 / APA / MLA）+「哪种语言能选哪些」的唯一判据
 │   │   ├── citation_gb_types.py # GB/T 7714 里期刊以外那几类（[M]/[D]/[C]/[N]）的著录模板，触发条件只读本类型专属的新列
@@ -176,10 +176,14 @@ sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`），
 │   │   ├── names.py            # 著者姓名规范化（GB/T 姓全大写 / APA 倒装缩写 / MLA 全名 + 等、et al.）
 │   │   ├── metadata.py         # 文献元数据「缺失值」判定（单一事实来源）
 │   │   ├── agents/             # 10 个职责模块（其中 schedule_agent 不含 LLM 调用）
-│   │   └── routers/            # API 路由 + 闸门
-│   │       ├── projects.py     # 项目主路由（全部业务入口）
+│   │   └── routers/            # API 路由 + 闸门（projects.py 门面，按业务域拆五模块）
+│   │       ├── projects_common.py    # 共享层：pydantic 模型、忙闲闸、公共判据
+│   │       ├── projects_outline.py   # 选题与大纲域
+│   │       ├── projects_documents.py # 文献与材料域（含 CAJ 转换入口）
+│   │       ├── projects_citations.py # 引用调度域
+│   │       ├── projects_generation.py# 正文生成域
 │   │       └── config.py       # 配置路由（Key 查看 / 更新）
-│   ├── tests/                  # pytest，1041 个用例
+│   ├── tests/                  # pytest，1056 个用例
 │   └── requirements.txt
 ├── frontend/                   # Vite + React 前端
 │   ├── src/
@@ -235,8 +239,8 @@ sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`），
 
 | 指标 | 数值 |
 |---|---|
-| 后端（`backend/app`） | 29 个 Python 文件，约 9.6k 行 |
-| 后端测试 | 26 个文件，约 13.3k 行，**1041 个用例全绿** |
+| 后端（`backend/app`） | 35 个 Python 文件，约 10.1k 行 |
+| 后端测试 | 27 个文件，约 13.6k 行，**1056 个用例全绿** |
 | 前端测试 | `frontend/tests/` 4 个 `.mjs`，**39 个 `node --test` 用例**（Node 24 内置，零依赖） |
 | 前端（`frontend/src`） | **18 个文件，约 4.7k 行**（v1.32 拆分后：`App.jsx` 1,661、7 个步骤组件 1,741、4 个通用组件 295、`constants.js` 281、`exporters.js` 349、`api.js` 199、`helpers.js` 94） |
 | 论文类型 | 7 类，每类一条差异化工作流 |
@@ -574,6 +578,15 @@ grep -rn "def test_gb7714_monograph_template\|def test_gb7714_dissertation_templ
 grep -rn "POLLED_TASK_KINDS\|scheduleInFlight" frontend/src
 grep -rn "viewPrimary\|开始分段生成\|查看导出结果" frontend/src
 grep -rn "def test_citation_schedule_reports_progress_while_it_waits\|def test_citation_schedule_marks_progress_done\|def test_citation_schedule_failure_does_not_leave_a_running_bar\|def test_citation_schedule_rejected_leaves_no_trace\|def test_citations_is_a_polled_task_kind\|def test_citation_step_renders_its_progress_bar\|def test_finish_task_reconciles_the_binding_for_citations\|def test_schedule_citations_has_a_client_side_timeout\|def test_generate_step_view_button_takes_over_the_primary_slot" backend/tests
+
+# 33) 知网 CAJ 支持（v1.34，D-37）：扩展名白名单只有一份（caj_support.CAJ_DOC_EXTS），
+#     文献与材料两条入口都经同一个 unwrap_to_pdf 转 PDF —— 下面前两条各应命中两处调用点
+#     （routers/projects_documents.py 与 material_parser.py），白名单定义只应有 1 行；
+#     第三条钉死三种「有文字层」格式与三种拒绝格式。新增用例 15 条，pytest 总数 1041 → 1056
+grep -rn "CAJ_DOC_EXTS" backend/app
+grep -rn "unwrap_to_pdf" backend/app
+grep -rn "def _fmt_of\|UnsupportedCaj" backend/app/caj_support.py
+grep -rn "def test_.*caj\|def test_.*kdh" backend/tests | wc -l
 ```
 
 ---

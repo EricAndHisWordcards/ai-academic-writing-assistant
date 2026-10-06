@@ -324,6 +324,7 @@
 | `release7` | 已交付（**已落后**） | 2026-09-24 04:04 烘；127,391,559 字节；sha256 `89e74fcf461587077e1bc1594ba3e98f50c854b1665b5a3f1af4e39319599701`。**不含 D-30 的 WAL 修复**（烘的时候后端还没改），已被 `release8` 取代，但按规则原封不动 |
 | **`release8`（已发布）** | 已交付 | 2026-09-27 00:12 烘；127,885,710 字节；sha256 `3d012deba3e00cab10cdd3c7de292b468ca5a87861b8f375db18acb122e8fb67`；后端 exe 19,882,302 字节；对应 tag `v1.31` |
 | **`release9`（已发布）** | 已发布 | 2026-10-03 22:51 烘，**2026-10-04 发布，tag `v1.33`**；127,661,665 字节；sha256 `68209194AAF68F6C2C40B16F0007C6E99E6F53CE292381712385AB7A67A2BF8C`；后端 exe 19,656,206 字节；前端 bundle `index-CINfOPiD.js` 224,158 字节。资产名按 GitHub 规则用 ASCII（`AI-Academic-Writing-Assistant-1.0.0-win.zip`，见 D-36）。触发判据①（D-34 动了 `backend/app/`）。烘前清掉了 `app/routers/__pycache__/` 里改名残留的 `_projects_common.cpython-312.pyc`（datas 整棵打包会把它带进 exe）。验证：exe 字节扫描含新模块、真跑起来 `/api/meta` 回 200、上传四层自检 466 个产物成员零命中、发布后 CDN 206 可达 |
+| **`release10`（已发布）** | 已发布 | **2026-10-06 发布，tag `v1.34`**；127,426,746 字节；sha256 `48225B6BC3D836D19008D7B19A6E014B13F4FC3EF6E97FF421A4CA601347DFD3`；后端 exe 19,419,650 字节；前端 bundle `index-6E98Tej8.js` 211.10 kB。内容：D-37（知网 CAJ/KDH 直传，新增 `caj_support.py`，触发判据①）。烘包后又把材料入口的扩展名判据收敛为复用 `CAJ_DOC_EXTS`（单一事实来源），虽行为等价但动了 `backend/app/`，按判据①两个半边重打了第二次——第一次的 zip 从未发布、已删除。验证：exe 真跑 `/api/health` 回 `{"status":"ok"}`、四层自检 621 个产物成员零命中 |
 
 > **为什么要出 `release8`**：`release7` 烘于 2026-09-24 04:04，而 D-30 的
 > `DATABASE_WAL` 开关是 2026-09-26 22:42–22:43 才改的（`db.py` / `config.py`）。
