@@ -31,7 +31,7 @@
     "appId": "com.academic.writer",
     "productName": "AI学术写作辅助系统",
     "directories": {
-      "output": "release9"
+      "output": "release10"
     },
     "files": [
       "dist/**/*",
