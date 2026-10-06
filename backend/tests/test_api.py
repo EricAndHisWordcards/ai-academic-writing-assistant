@@ -336,7 +336,48 @@ def test_upload_rejects_invalid_then_accepts_valid(tmp_db):
         )
         assert task["saved"] == 1  # 只有 valid 文件成功
         assert len(task["failed"]) == 1  # bad.txt 被记为失败
+        assert task["failed"][0]["reason"] == "非 PDF/CAJ 文件（支持 .pdf / .caj / .kdh）"
         assert len(docs) == 1
+
+
+def test_upload_caj_with_pdf_header_is_accepted(tmp_db):
+    """知网下载的 .caj 若内部就是 %PDF，走文献解析正常入库。"""
+    from app.main import app
+
+    with TestClient(app) as client:
+        pid = client.post("/api/projects", json={}).json()["id"]
+        client.post(f"/api/projects/{pid}/topic", json={
+            "paper_type": "课程论文/小论文", "target_words": 1000, "topic": "t",
+        })
+        pdf = _make_pdf(["CAJ wrapped as PDF."])
+        task, docs = _upload_documents(
+            client, pid,
+            files=[("files", ("paper.caj", pdf, "application/octet-stream"))],
+        )
+        assert task["saved"] == 1
+        assert len(task["failed"]) == 0
+        assert len(docs) == 1
+        assert docs[0]["filename"] == "paper.caj"
+
+
+def test_upload_caj_with_hn_header_falls_into_failed(tmp_db):
+    """HN 头的 .caj（扫描版）进 failed，reason 带 PDF 指引。"""
+    from app.main import app
+
+    with TestClient(app) as client:
+        pid = client.post("/api/projects", json={}).json()["id"]
+        client.post(f"/api/projects/{pid}/topic", json={
+            "paper_type": "课程论文/小论文", "target_words": 1000, "topic": "t",
+        })
+        hn_payload = b"HN\xc8\x00" + b"\x00" * 200
+        task, docs = _upload_documents(
+            client, pid,
+            files=[("files", ("scan.caj", hn_payload, "application/octet-stream"))],
+        )
+        assert task["saved"] == 0
+        assert len(task["failed"]) == 1
+        assert "PDF" in task["failed"][0]["reason"] or "扫描" in task["failed"][0]["reason"]
+        assert len(docs) == 0
 
 
 def test_health_and_meta(tmp_db):

@@ -21,6 +21,7 @@ import re
 import zipfile
 from xml.etree import ElementTree as ET
 
+from app import caj_support
 from app.pdf_parser import extract_pdf_text
 
 # 单份材料最多保留的字符数。作者可能贴进来几十万字的原始记录，全量塞进提示词既
@@ -31,7 +32,8 @@ MAX_CHARS = 200_000
 EXCERPT_CHARS = 2000
 
 SUPPORTED_EXTENSIONS = {
-    ".pdf", ".txt", ".md", ".markdown", ".csv", ".json", ".log", ".docx", ".xlsx",
+    ".pdf", ".caj", ".kdh", ".txt", ".md", ".markdown", ".csv", ".json", ".log",
+    ".docx", ".xlsx",
 }
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -53,8 +55,12 @@ def extract_text(filename: str, data: bytes) -> str:
     而不是存一份空材料进库。
     """
     ext = _ext(filename)
-    if ext == ".pdf":
-        pages = extract_pdf_text(data)
+    if ext in (".pdf", ".caj", ".kdh"):
+        try:
+            pdf_bytes = caj_support.unwrap_to_pdf(data)
+        except caj_support.UnsupportedCaj as e:
+            raise UnsupportedMaterial(str(e)) from e
+        pages = extract_pdf_text(pdf_bytes)
         text = "\n".join(p["text"] for p in pages if p["text"])
     elif ext in (".docx", ".xlsx"):
         try:

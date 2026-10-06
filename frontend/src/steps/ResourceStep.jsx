@@ -43,8 +43,8 @@ export function ResourceStep(props) {
         <p className="muted">
           建议前往 <strong>知网(CNKI)</strong>、<strong>谷歌学术(Google Scholar)</strong> 等平台，
           {props.isReview
-            ? '围绕研究主题检索并下载真实文献 PDF，然后批量上传 —— 下一步的大纲将据此生成。'
-            : '根据大纲章节关键词下载真实文献 PDF，然后批量上传。文献用于正文引用与文末参考文献列表；'
+            ? '围绕研究主题检索并下载真实文献 PDF（或知网 CAJ），然后批量上传 —— 下一步的大纲将据此生成。'
+            : '根据大纲章节关键词下载真实文献 PDF（或知网 CAJ），然后批量上传。文献用于正文引用与文末参考文献列表；'
               + '若本文不需要参考文献，也可以留空直接进入下一步。'}
         </p>
       </div>
@@ -60,11 +60,11 @@ export function ResourceStep(props) {
             点下去必然 409，失败原因从前还被 api.js 吞掉（现在会如实显示）。 */}
         <label className="upload-zone">
           <input
-            type="file" multiple accept=".pdf"
+            type="file" multiple accept=".pdf,.caj,.kdh"
             onChange={props.onUpload}
             disabled={props.loading || props.busy}
           />
-          <span>点击上传批量 PDF 文献（支持多选）</span>
+          <span>点击上传批量 PDF/CAJ 文献（支持多选）</span>
         </label>
         {parseRunning && (
           <WorkingBar
@@ -217,11 +217,11 @@ export function MaterialPanel(props) {
         <label className="upload-zone upload-zone-sm">
           <input
             type="file" multiple
-            accept=".pdf,.docx,.txt,.md,.markdown,.csv,.json,.log,.xlsx"
+            accept=".pdf,.caj,.kdh,.docx,.txt,.md,.markdown,.csv,.json,.log,.xlsx"
             onChange={props.onUploadMaterials}
             disabled={props.loading || analyzing}
           />
-          <span>或上传文件（PDF / Word / Excel / txt / csv）</span>
+          <span>或上传文件（PDF / CAJ / Word / Excel / txt / csv）</span>
         </label>
       </div>
 

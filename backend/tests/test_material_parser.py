@@ -134,12 +134,52 @@ def test_empty_content_is_rejected():
         material_parser.extract_text("空.txt", b"   \n  ")
 
 
+def test_caj_with_pdf_header_extracts_text():
+    """材料入口同样支持 %PDF 头的 .caj。"""
+    text = material_parser.extract_text("data.caj", _make_pdf(["material content."]))
+    assert "material content." in text
+
+
+def test_unsupported_caj_format_is_rejected_with_reason():
+    """HN 头的 .caj 在材料入口同样明确拒绝。"""
+    with pytest.raises(material_parser.UnsupportedMaterial) as exc:
+        material_parser.extract_text("扫描.caj", b"HN\xc8\x00" + b"\x00" * 200)
+    assert "PDF" in str(exc.value) or "扫描" in str(exc.value)
+
+
 def test_pdf_without_text_is_rejected():
     """无文本层的 PDF（扫描版）与 PDF 解析失败要落到同一个明确结果。"""
     empty_pdf = _empty_pdf()
     with pytest.raises(material_parser.UnsupportedMaterial) as exc:
         material_parser.extract_text("扫描件.pdf", empty_pdf)
     assert "未提取到任何文字" in str(exc.value)
+
+
+def _make_pdf(text_lines):
+    """构造含文本层的最小合法 PDF。"""
+    content = "BT /F1 14 Tf 72 740 Td 20 TL "
+    for line in text_lines:
+        content += f"({line}) Tj T* "
+    content += "ET"
+    objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        f"<< /Length {len(content.encode())} >>\nstream\n{content}\nendstream",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    pdf = b"%PDF-1.4\n"
+    offsets = []
+    for i, obj in enumerate(objs, 1):
+        offsets.append(len(pdf))
+        pdf += f"{i} 0 obj\n{obj}\nendobj\n".encode()
+    xref = len(pdf)
+    pdf += f"xref\n0 {len(objs)+1}\n".encode()
+    pdf += b"0000000000 65535 f \n"
+    for off in offsets:
+        pdf += f"{off:010d} 00000 n \n".encode()
+    pdf += f"trailer\n<< /Size {len(objs)+1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    return pdf
 
 
 def _empty_pdf() -> bytes:
@@ -169,6 +209,8 @@ def _empty_pdf() -> bytes:
 
 def test_supported_extensions_check():
     assert material_parser.is_supported("a.pdf")
+    assert material_parser.is_supported("a.caj")
+    assert material_parser.is_supported("a.kdh")
     assert material_parser.is_supported("A.DOCX")   # 大小写不敏感
     assert not material_parser.is_supported("a.doc")
     assert not material_parser.is_supported("没有扩展名")

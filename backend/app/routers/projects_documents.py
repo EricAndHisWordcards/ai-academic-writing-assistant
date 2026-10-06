@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app import db, material_parser, metadata, paper_types, tasks
+from app import caj_support, db, material_parser, metadata, paper_types, tasks
 from app.agents import design_agent, material_agent, schedule_agent
 from app.agents.parse_agent import extract_metadata, merge_hard_wraps
 from app.citation_format import SOURCE_TYPES
@@ -133,11 +133,22 @@ async def _run_parse(project_id: str, payload: list[tuple[str, bytes]]) -> None:
                 f"正在解析文献 {i}/{total}：{filename or '(未命名)'}",
                 done=i - 1, total=total, current=filename,
             )
-            if not filename or not filename.lower().endswith(".pdf"):
-                failed.append({"filename": filename, "reason": "非 PDF 文件"})
+            # 扩展名白名单与材料共用同一份判据（CAJ_DOC_EXTS）：.caj/.kdh 同样是
+            # 知网下载形态，只是后缀不同。内部格式检查在 unwrap_to_pdf 里做。
+            ext = ("." + filename.rsplit(".", 1)[-1]).lower() if "." in (filename or "") else ""
+            if ext not in caj_support.CAJ_DOC_EXTS:
+                failed.append({
+                    "filename": filename,
+                    "reason": "非 PDF/CAJ 文件（支持 .pdf / .caj / .kdh）",
+                })
                 continue
             try:
-                pages = extract_pdf_text(data)
+                pdf_bytes = caj_support.unwrap_to_pdf(data)
+            except caj_support.UnsupportedCaj as e:
+                failed.append({"filename": filename, "reason": str(e)})
+                continue
+            try:
+                pages = extract_pdf_text(pdf_bytes)
             except Exception as e:  # noqa: BLE001
                 failed.append({"filename": filename, "reason": f"解析失败: {e}"})
                 continue

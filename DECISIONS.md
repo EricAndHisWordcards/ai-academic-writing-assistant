@@ -298,6 +298,20 @@
 - **处置**：资产统一用 ASCII 名 `AI-Academic-Writing-Assistant-1.0.0-win.zip`（与 v1.31 一致），中文产品名只出现在 Release 说明正文，不进资产名。
 - **同轮另一个坑**：PowerShell 5.1 的 `Set-Content -Encoding UTF8` 写 UTF-8 **带 BOM**，curl 原样发出 → GitHub 报 `Problems parsing JSON`。改用 `[IO.File]::WriteAllText(path, json, [Text.UTF8Encoding]::new($false))` 写无 BOM 文件。
 
+### D-37 · 知网 CAJ 家族格式直接上传（`.caj` / `.kdh`）
+
+- **为什么**：知网默认下载的是 `.caj`，此前用户必须先手动转成 PDF 才能上传。直接支持 CAJ 后，批量上传文献的动线少一步。
+- **支持边界**（只收「有文字层」的三种，扫描/私有格式明确拒绝）：
+  - `%PDF` 直头：文件本身就是 PDF 套了 `.caj` 后缀 → 原样透传；
+  - `CAJ\x00` 容器：按固定偏移（页数@0x10、一级指针@0x14）取出内嵌 PDF 对象流，缺 catalog/xref 时补最简 catalog 后交给 pypdf 非严格模式重建；
+  - `KDH `：前 254 字节头部 + 以口令 `FZHMEI` 循环 XOR 加密的 PDF，截到 `%%EOF`；
+  - `HN` / `\xc8`（C8）/ `TEB`：无文字层或私有格式 → `UnsupportedCaj`，消息里带「改下 PDF」指引。
+- **单一事实来源**：`caj_support.CAJ_DOC_EXTS = {".pdf", ".caj", ".kdh"}` 是文献与材料两条上传入口共享的扩展名判据；`_run_parse` 与 `material_parser.extract_text` 都经 `caj_support.unwrap_to_pdf` 统一转换后再走 `extract_pdf_text`。
+- **零新增依赖**：全部基于标准库 + 已有 `pypdf==5.1.0`；不引入 `PyMuPDF`/`mutool` 等外部工具（PyInstaller 打包纪律）。
+- **关键行为参数**（实测 pypdf 5.1.0 非严格模式得出）：缺 xref 的对象流必须含 `startxref` 行才能触发全文对象扫描，且值不能为 0（会 `seek(-1)` 崩溃）；trailer 必须提供 `/Root` 指向 catalog；追加的对象必须以换行与前一 `endobj` 分隔。
+- **验证**：`test_caj_support.py` 11 条（透传/容器剥离/缺 catalog 重建/KDH 解密/拒绝私有格式/结构损坏），含变异探针；`test_api.py` 新增 2 条（%PDF 头 `.caj` 正常入库、HN 头 `.caj` 落 failed）；`test_material_parser.py` 新增 2 条（材料入口 CAJ 透传、HN 拒绝）+ `is_supported` 扩展。pytest 1056 全绿（原 1041 + 15 条新增）。
+- **前端同步**：`ResourceStep.jsx` 文献 `accept` 改为 `.pdf,.caj,.kdh`，材料 `accept` 同步扩展；上传文案与下载指南补「或知网 CAJ」。
+
 ---
 
 ## 交付包沿革
