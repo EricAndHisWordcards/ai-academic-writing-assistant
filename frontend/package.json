@@ -1,7 +1,7 @@
 {
   "name": "academic-writing-frontend",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.34.0",
   "type": "module",
   "main": "electron/main.cjs",
   "engines": {
@@ -30,6 +30,7 @@
   "build": {
     "appId": "com.academic.writer",
     "productName": "AI学术写作辅助系统",
+    "artifactName": "AI-Academic-Writing-Assistant-v${version}-win.${ext}",
     "directories": {
       "output": "release10"
     },

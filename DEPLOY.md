@@ -80,7 +80,7 @@ resources/backend/academic_backend.exe（PyInstaller onefile：Python 运行时 
 
 ```powershell
 # Windows PowerShell —— 与 Releases 页面标注的 SHA256 对比
-Get-FileHash .\AI-Academic-Writing-Assistant-1.0.0-win.zip -Algorithm SHA256
+Get-FileHash .\AI-Academic-Writing-Assistant-v1.34.0-win.zip -Algorithm SHA256
 ```
 
 ### ⚠️ 两个必须知道的限制

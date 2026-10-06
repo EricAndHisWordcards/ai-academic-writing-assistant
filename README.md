@@ -153,10 +153,10 @@ node --test tests/exporters.test.mjs tests/api.test.mjs \
 
 | | |
 | --- | --- |
-| **下载** | [**Releases**](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/releases/latest) 页面里的 `AI-Academic-Writing-Assistant-1.0.0-win.zip` |
+| **下载** | [**Releases**](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/releases/latest) 页面里的 `AI-Academic-Writing-Assistant-v1.34.0-win.zip` |
 | **版本** | [v1.34](https://github.com/EricAndHisWordcards/ai-academic-writing-assistant/releases/tag/v1.34) |
-| **体积** | 122 MB（127,426,746 字节） |
-| **SHA256** | `48225b6bc3d836d19008d7b19a6e014b13f4fc3ef6e97ff421a4ca601347dfd3` |
+| **体积** | 122 MB（127,426,747 字节） |
+| **SHA256** | `13f2c085d73749deda78b9d7418ccb3b29e9a607f83098b49a03c1d3677f5284` |
 | **平台** | Windows x64（目前只有这一个平台的构建） |
 
 解压 → 双击 `AI学术写作辅助系统.exe` → 完事。**不需要安装任何东西**：Python 运行时、FastAPI、Chromium 都打在里面了。启动后后端跑在 `127.0.0.1:8000`，数据库落在 `~/.academic_writer/app.db`。

@@ -116,8 +116,8 @@ Electron 31.7.7 + electron-builder 24.13.3（`asar: false`，`win.target: ["zip"
 PyInstaller **onefile** 打包（`backend/run_desktop.spec`，`console=False`）→ 约 19 MB 的
 `academic_backend.exe`（v1.34 重打后 19,419,650 字节），作为 `extraResources`
 落到 `resources/backend/`。当前交付物
-`frontend/release10/AI学术写作辅助系统-1.0.0-win.zip`（127,426,746 字节，2026-10-06 烘，
-sha256 `48225B6BC3D836D19008D7B19A6E014B13F4FC3EF6E97FF421A4CA601347DFD3`），
+`frontend/release10/AI-Academic-Writing-Assistant-v1.34.0-win.zip`（127,426,747 字节，2026-10-06 烘，
+sha256 `13F2C085D73749DEDA78B9D7418CCB3B29E9A607F83098B49A03C1D3677F5284`），
 解压即用（免装 Python / Node）。
 
 > **历代包沿革**：`release8`（v1.31）首次带 D-30 的 WAL 修复；`release9`（v1.33）含
